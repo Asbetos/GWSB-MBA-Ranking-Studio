@@ -1,0 +1,22 @@
+{
+  "features": [
+    "EmployedAtGrad",
+    "Employed3Mo",
+    "AvgSalaryBonus",
+    "SalaryByProfession",
+    "MedianGPA",
+    "AcceptanceRate",
+    "PeerScore",
+    "RecruiterScore",
+    "GMAT_Combined"
+  ],
+  "target": "OverallScore",
+  "snapshot_year": 2025,
+  "models": [
+    "elasticnet",
+    "randomforest",
+    "gradientboost",
+    "mlp",
+    "stacked"
+  ]
+}

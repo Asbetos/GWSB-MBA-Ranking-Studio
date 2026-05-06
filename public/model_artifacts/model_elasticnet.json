@@ -1,0 +1,34 @@
+{
+  "coef": [
+    2.024890048511079,
+    2.308317975355241,
+    6.399908208303992,
+    4.010630181467078,
+    2.730303783982658,
+    -1.1489046742200415,
+    6.3163710232107935,
+    3.0964734714774558,
+    -0.2790100320994074
+  ],
+  "intercept": 54.14403292181069,
+  "l1_ratio": 0.5,
+  "alpha": 0.03890474884354398,
+  "calibration_intercept": -2.8337357414345377,
+  "performance_cv": {
+    "mae": 3.1136877718421556,
+    "rmse": 4.009467161486567,
+    "r2": 0.9638273660581859,
+    "spearman": 0.9780397577148897
+  },
+  "feature_names": [
+    "EmployedAtGrad",
+    "Employed3Mo",
+    "AvgSalaryBonus",
+    "SalaryByProfession",
+    "MedianGPA",
+    "AcceptanceRate",
+    "PeerScore",
+    "RecruiterScore",
+    "GMAT_Combined"
+  ]
+}

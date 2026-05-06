@@ -1,0 +1,33 @@
+{
+  "base_order": [
+    "elasticnet",
+    "randomforest",
+    "gradientboost",
+    "mlp"
+  ],
+  "meta_coef": [
+    0.5377920726741513,
+    -0.19998321661724106,
+    0.7112371409563767,
+    -0.034293232694872014
+  ],
+  "meta_intercept": -0.7618645894267502,
+  "calibration_intercept": -2.4537152737543124,
+  "performance_cv": {
+    "mae": 2.9606960612283397,
+    "rmse": 3.8296233430781363,
+    "r2": 0.9669996204339721,
+    "spearman": 0.9782467879644561
+  },
+  "feature_names": [
+    "EmployedAtGrad",
+    "Employed3Mo",
+    "AvgSalaryBonus",
+    "SalaryByProfession",
+    "MedianGPA",
+    "AcceptanceRate",
+    "PeerScore",
+    "RecruiterScore",
+    "GMAT_Combined"
+  ]
+}
