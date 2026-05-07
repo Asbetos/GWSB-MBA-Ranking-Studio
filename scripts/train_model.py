@@ -58,13 +58,20 @@ MIN_OCCUPATION_REPORTERS = 3
 
 GMAT_INPUT_CONFIG = {
     'gmat_scale_default': 'old',
-    'gmat_old_range': {'min': 500, 'max': 800, 'step': 5},
-    'gmat_new_range': {'min': 505, 'max': 805, 'step': 5},
+    'gmat_old_range': {'min': 200, 'max': 800, 'step': 5},
+    'gmat_new_range': {'min': 205, 'max': 805, 'step': 5},
     'gre_q_range':    {'min': 130, 'max': 170, 'step': 1},
     'gre_v_range':    {'min': 130, 'max': 170, 'step': 1},
     'gre_aw_range':   {'min': 0.0, 'max': 6.0, 'step': 0.5},
     'gre_default_enabled': False,
 }
+
+SBP_OCCUPATIONS = [
+    'Consulting', 'Finance / Accounting', 'General Management',
+    'Marketing / Sales', 'Operations / Production',
+    'Management Information Systems (MIS)', 'Human Resources',
+]
+SBP_SLIDER = {'min': 60000, 'max': 260000, 'step': 1000, 'format': 'dollar'}
 
 SLIDER_RANGES = {
     'EmployedAtGrad':      {'min': 0.20, 'max': 1.00, 'step': 0.01, 'label': 'Employed at Graduation', 'format': 'percent'},
@@ -547,15 +554,52 @@ def export_artifacts(df, models, scaler, perf, output_dir):
         }
     feature_ranges['_gmat_input_config'] = GMAT_INPUT_CONFIG
 
+    sbp_cohort = {}
+    for occ in SBP_OCCUPATIONS:
+        rows = []
+        for i in range(8):
+            occ_col = f'base_salary_by_occupation[{i}].occupation'
+            sal_col = f'base_salary_by_occupation[{i}].average_salary'
+            n_col   = f'base_salary_by_occupation[{i}].number_reporting_jobs'
+            if occ_col not in df.columns: continue
+            sub = df[(df['Year'] == snap_year) & (df[occ_col] == occ)]
+            for _, r in sub.iterrows():
+                sal = r.get(sal_col); n = r.get(n_col)
+                if pd.isna(sal) or pd.isna(n) or n < MIN_OCCUPATION_REPORTERS: continue
+                rows.append((float(sal), float(n)))
+        if rows:
+            ntot = sum(r[1] for r in rows)
+            sbp_cohort[occ] = {
+                'cohort_mean': float(sum(r[0]*r[1] for r in rows) / ntot),
+                'cohort_n_total': int(ntot),
+            }
+    feature_ranges['_sbp_cohort'] = sbp_cohort
+    feature_ranges['_sbp_occupations'] = SBP_OCCUPATIONS
+    feature_ranges['_sbp_slider'] = SBP_SLIDER
+
     gwu_match = snap_df[snap_df['School'].str.contains('George Washington', case=False, na=False)]
     if not gwu_match.empty:
         gwu_full = df[(df['School'].str.contains('George Washington', case=False, na=False)) & (df['Year'] == snap_year)].iloc[0]
         gwu_vals = {f: float(gwu_match.iloc[0][f]) for f in ALL_FEATURES}
         for raw_col, key in (('GMAT_Old', 'gmat_old'), ('GMAT_New', 'gmat_new'),
                              ('GRE_Q', 'gre_q'), ('GRE_V', 'gre_v'), ('GRE_AW', 'gre_aw'),
-                             ('Pct_GMAT_Old', 'pct_gmat_old'), ('Pct_GMAT_New', 'pct_gmat_new'), ('Pct_GRE', 'pct_gre')):
+                             ('Pct_GMAT_Old', 'pct_gmat_old'), ('Pct_GMAT_New', 'pct_gmat_new'), ('Pct_GRE', 'pct_gre'),
+                             ('student_body_fulltime_mba.enrollment', 'fulltime_enrollment')):
             v = gwu_full.get(raw_col, np.nan)
             gwu_vals[key] = None if pd.isna(v) else float(v)
+        gwu_sbp = {}
+        for i in range(8):
+            occ_col = f'base_salary_by_occupation[{i}].occupation'
+            sal_col = f'base_salary_by_occupation[{i}].average_salary'
+            n_col   = f'base_salary_by_occupation[{i}].number_reporting_jobs'
+            occ = gwu_full.get(occ_col)
+            if not isinstance(occ, str) or occ.strip() not in SBP_OCCUPATIONS: continue
+            sal = gwu_full.get(sal_col); n = gwu_full.get(n_col)
+            gwu_sbp[occ.strip()] = {
+                'salary': None if pd.isna(sal) else float(sal),
+                'n_reporting': None if pd.isna(n) else float(n),
+            }
+        gwu_vals['sbp_per_occupation'] = gwu_sbp
         feature_ranges['_gwu_current'] = gwu_vals
         feature_ranges['_gwu_school_name'] = str(gwu_match.iloc[0]['School'])
         feature_ranges['_gwu_current_rank'] = int(gwu_match.iloc[0]['Rank'])

@@ -3,7 +3,7 @@
  * Compact card layout (smaller padding, designed for the dual-panel studio).
  */
 
-import { getFeatureRanges, getGWUValues, getGmatInputConfig, computeBlendedGMAT } from './model.js';
+import { getFeatureRanges, getGWUValues, getGmatInputConfig, computeBlendedGMAT, getSbpConfig, computeSBPRatio } from './model.js';
 
 const FEATURE_ORDER = [
   'EmployedAtGrad', 'Employed3Mo', 'AvgSalaryBonus', 'SalaryByProfession',
@@ -13,6 +13,7 @@ const FEATURE_ORDER = [
 
 let currentValues = {};
 let gmatState = { scale: 'old', gmat_score: null, gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false };
+let sbpState = {};
 let onChangeCallback = null;
 let debounceTimer = null;
 
@@ -153,6 +154,96 @@ function attachGmatHandlers(wrap, gmatCfg, fireChange) {
   update();
 }
 
+// ============================================================
+// Composite SBP control: 7 industries × {salary, n_reporting}
+// ============================================================
+
+function buildSBPComposite(sbpCfg, gwuSBP) {
+  const wrap = document.createElement('div');
+  wrap.className = 'slider-container md:col-span-2';
+  wrap.id = 'slider-SalaryByProfession';
+
+  const occs = sbpCfg.occupations;
+  const cohort = sbpCfg.cohort;
+  const sld = sbpCfg.slider;
+
+  sbpState = {};
+  for (const occ of occs) {
+    const gw = gwuSBP?.[occ];
+    sbpState[occ] = {
+      salary: (gw?.salary != null) ? gw.salary : (cohort[occ]?.cohort_mean ?? 130000),
+      n: (gw?.n_reporting != null) ? gw.n_reporting : 0,
+    };
+  }
+
+  const rows = occs.map(occ => {
+    const cm = cohort[occ]?.cohort_mean;
+    const cmStr = cm ? `cohort $${Math.round(cm).toLocaleString()}` : 'no cohort data';
+    const init = sbpState[occ];
+    const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
+    return `
+      <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+        <div class="flex items-center justify-between mb-0.5">
+          <p class="text-[11px] font-semibold text-white">${occ}</p>
+          <span class="text-[9px] text-gray-500">${cmStr}</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <input type="range" id="sbp-sal-${safeKey}" data-occ="${occ}" data-role="salary"
+                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${init.salary}" class="flex-1" />
+          <input type="number" id="sbp-n-${safeKey}" data-occ="${occ}" data-role="n"
+                 min="0" max="200" step="1" value="${init.n}"
+                 class="w-11 bg-ink-800 border border-white/10 text-emerald-300 rounded px-1 py-0.5 text-[10px] font-mono text-right" title="number of reporting graduates" />
+        </div>
+        <div class="flex justify-between mt-0.5">
+          <span class="text-[9px] text-magenta-300 font-mono" id="sbp-sal-disp-${safeKey}">$${Math.round(init.salary).toLocaleString()}</span>
+          <span class="text-[9px] text-gray-500">n≥3 to count</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="flex items-center justify-between mb-1.5">
+      <div>
+        <label class="text-xs font-semibold text-gray-300">Salary by Profession</label>
+        <p class="text-[9px] text-gray-500">Per-industry salary × cohort ratio (drops industries with &lt;3 reporters).</p>
+      </div>
+      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md" id="value-SalaryByProfession">—</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">${rows}</div>
+  `;
+  return wrap;
+}
+
+function attachSBPHandlers(wrap, fireChange) {
+  const chip = wrap.querySelector('#value-SalaryByProfession');
+  const update = () => {
+    const ratio = computeSBPRatio(sbpState);
+    chip.textContent = ratio !== null ? ratio.toFixed(3) : '—';
+    currentValues.SalaryByProfession = { ...sbpState };
+    fireChange();
+  };
+  wrap.querySelectorAll('input[data-role="salary"]').forEach(el => {
+    el.addEventListener('input', e => {
+      const occ = e.target.dataset.occ;
+      sbpState[occ].salary = parseFloat(e.target.value);
+      const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
+      const disp = wrap.querySelector(`#sbp-sal-disp-${safeKey}`);
+      if (disp) disp.textContent = '$' + Math.round(sbpState[occ].salary).toLocaleString();
+      update();
+    });
+  });
+  wrap.querySelectorAll('input[data-role="n"]').forEach(el => {
+    el.addEventListener('input', e => {
+      const occ = e.target.dataset.occ;
+      const v = parseInt(e.target.value, 10);
+      sbpState[occ].n = isNaN(v) ? 0 : Math.max(0, v);
+      update();
+    });
+  });
+  update();
+}
+
 export function initSliders(containerId, onChange) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -162,11 +253,13 @@ export function initSliders(containerId, onChange) {
   const gmatCfg = getGmatInputConfig();
   onChangeCallback = onChange;
 
+  const sbpCfg = getSbpConfig();
   for (const k of FEATURE_ORDER) {
-    if (k === 'GMAT_Combined') continue;
+    if (k === 'GMAT_Combined' || k === 'SalaryByProfession') continue;
     currentValues[k] = gwuValues[k] ?? ranges[k]?.data_median ?? ranges[k]?.min ?? 0;
   }
   currentValues.GMAT_Combined = null;
+  currentValues.SalaryByProfession = null;
 
   const fireChange = () => {
     clearTimeout(debounceTimer);
@@ -178,6 +271,12 @@ export function initSliders(containerId, onChange) {
       const composite = buildGmatComposite(gmatCfg, gwuValues);
       container.appendChild(composite);
       attachGmatHandlers(composite, gmatCfg, fireChange);
+      continue;
+    }
+    if (k === 'SalaryByProfession') {
+      const composite = buildSBPComposite(sbpCfg, gwuValues.sbp_per_occupation || {});
+      container.appendChild(composite);
+      attachSBPHandlers(composite, fireChange);
       continue;
     }
     const cfg = ranges[k];
@@ -211,7 +310,7 @@ export function initSliders(containerId, onChange) {
 export function setSlidersFromCfm(predictedCore) {
   const ranges = getFeatureRanges();
   for (const k of FEATURE_ORDER) {
-    if (k === 'GMAT_Combined') continue;
+    if (k === 'GMAT_Combined' || k === 'SalaryByProfession') continue;
     if (!(k in predictedCore)) continue;
     const cfg = ranges[k];
     if (!cfg) continue;
@@ -244,8 +343,9 @@ export function resetSliders() {
   const ranges = getFeatureRanges();
   const gwuValues = getGWUValues();
   const gmatCfg = getGmatInputConfig();
+  const sbpCfg = getSbpConfig();
   for (const k of FEATURE_ORDER) {
-    if (k === 'GMAT_Combined') continue;
+    if (k === 'GMAT_Combined' || k === 'SalaryByProfession') continue;
     const cfg = ranges[k];
     if (!cfg) continue;
     const v = gwuValues[k] ?? cfg.data_median ?? cfg.min;
@@ -253,6 +353,29 @@ export function resetSliders() {
     const r = document.getElementById(`range-${k}`); if (r) r.value = v;
     const ni = document.getElementById(`input-${k}`); if (ni) ni.value = v;
     const d = document.getElementById(`value-${k}`); if (d) d.textContent = fmt(v, cfg.format);
+  }
+  // Reset SBP composite
+  const sbpWrap = document.getElementById('slider-SalaryByProfession');
+  if (sbpWrap) {
+    const gwuSBP = gwuValues.sbp_per_occupation || {};
+    sbpState = {};
+    for (const occ of (sbpCfg.occupations || [])) {
+      const gw = gwuSBP[occ];
+      sbpState[occ] = {
+        salary: gw?.salary ?? sbpCfg.cohort[occ]?.cohort_mean ?? 130000,
+        n: gw?.n_reporting ?? 0,
+      };
+      const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
+      const sal = sbpWrap.querySelector(`#sbp-sal-${safeKey}`);
+      const nIn = sbpWrap.querySelector(`#sbp-n-${safeKey}`);
+      const disp = sbpWrap.querySelector(`#sbp-sal-disp-${safeKey}`);
+      if (sal) sal.value = sbpState[occ].salary;
+      if (nIn) nIn.value = sbpState[occ].n;
+      if (disp) disp.textContent = '$' + Math.round(sbpState[occ].salary).toLocaleString();
+    }
+    const ratio = computeSBPRatio(sbpState);
+    sbpWrap.querySelector('#value-SalaryByProfession').textContent = ratio !== null ? ratio.toFixed(3) : '—';
+    currentValues.SalaryByProfession = { ...sbpState };
   }
   // Reset GMAT composite by re-rendering the wrap children from scratch is complex;
   // instead we just reset the state and update the value chip.

@@ -106,6 +106,30 @@ export const getGWUSchoolName = () => featureRanges?._gwu_school_name || 'George
 export const getGWUCurrentRank = () => featureRanges?._gwu_current_rank || null;
 export const getGWUCurrentScore = () => featureRanges?._gwu_current_score || null;
 export const getGmatInputConfig = () => featureRanges?._gmat_input_config || {};
+
+export function getSbpConfig() {
+  return {
+    cohort:      featureRanges?._sbp_cohort      || {},
+    occupations: featureRanges?._sbp_occupations || [],
+    slider:      featureRanges?._sbp_slider      || { min: 60000, max: 260000, step: 1000, format: 'dollar' },
+  };
+}
+
+export function computeSBPRatio(perOccupation) {
+  const cohort = featureRanges?._sbp_cohort || {};
+  const MIN_N = 3;
+  let ratio_sum = 0, n_sum = 0;
+  for (const [occ, info] of Object.entries(perOccupation || {})) {
+    const cm = cohort[occ]?.cohort_mean;
+    if (!cm || cm <= 0) continue;
+    const sal = Number(info?.salary);
+    const n = Number(info?.n);
+    if (!isFinite(sal) || sal <= 0 || !isFinite(n) || n < MIN_N) continue;
+    ratio_sum += (sal / cm) * n;
+    n_sum += n;
+  }
+  return n_sum > 0 ? ratio_sum / n_sum : null;
+}
 export const getDataSnapshot = () => dataSnapshot;
 export const getMethodologyComparison = () => methodologyComparison;
 export const getCurrentEngine = () => currentEngine;
@@ -273,6 +297,9 @@ export function simulateRank(customMetrics, targetSchool = null, nSimulations = 
       for (const [k, v] of Object.entries(customMetrics)) {
         if (k === 'GMAT_Combined' && v !== null && typeof v === 'object') {
           m[k] = computeBlendedGMAT(v);
+        } else if (k === 'SalaryByProfession' && v !== null && typeof v === 'object') {
+          const ratio = computeSBPRatio(v);
+          if (ratio !== null) m[k] = ratio;
         } else {
           m[k] = v;
         }

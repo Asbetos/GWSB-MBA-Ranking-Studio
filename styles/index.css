@@ -354,3 +354,100 @@
 }
 
 #rankChart { max-height: 250px; }
+
+/* ================================================================ */
+/* Lever groups (indirect levers grouped by core target)            */
+/* ================================================================ */
+.lever-group {
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+.lever-group:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.lever-group-pip {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+}
+
+/* ================================================================ */
+/* Sticky top results bar (rank + score + CI + mini chart hint)     */
+/* ================================================================ */
+.sticky-results {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+  backdrop-filter: blur(20px);
+}
+.sticky-results::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0 -0.5rem 0;
+  background: linear-gradient(180deg, rgba(10,7,22,0.85) 0%, rgba(10,7,22,0.55) 90%, transparent 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Compact rank / studio header */
+.studio-header-row {
+  display: flex; align-items: center; gap: 1rem;
+  flex-wrap: wrap;
+}
+.studio-rank-badge {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(236,72,153,0.18), rgba(168,85,247,0.18), rgba(6,182,212,0.18));
+  border: 1px solid rgba(236,72,153,0.3);
+}
+
+/* ================================================================ */
+/* CFM hover-preview popover                                       */
+/* ================================================================ */
+.cfm-hover-host { position: relative; }
+.cfm-hover-popover {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 0.5rem);
+  min-width: 360px; max-width: 460px;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, rgba(13, 5, 23, 0.97) 0%, rgba(20, 9, 38, 0.97) 100%);
+  border: 1px solid rgba(168,85,247,0.4);
+  border-radius: 0.75rem;
+  box-shadow: 0 18px 50px -10px rgba(168,85,247,0.45), 0 4px 14px -2px rgba(0,0,0,0.6);
+  z-index: 30;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+}
+.cfm-hover-host:hover .cfm-hover-popover,
+.cfm-hover-host:focus-within .cfm-hover-popover {
+  opacity: 1; visibility: visible; transform: translate(-50%, 0.25rem);
+}
+.cfm-hover-popover h4 {
+  font-size: 0.78rem; font-weight: 700; margin: 0 0 0.5rem;
+  color: #f9a8d4; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.cfm-hover-popover .feat-row {
+  display: grid; grid-template-columns: 1fr 3rem 4.2rem;
+  gap: 0.4rem; align-items: center;
+  padding: 0.18rem 0;
+}
+.cfm-hover-popover .feat-name { color: #cbd5e1; font-size: 0.72rem; }
+.cfm-hover-popover .feat-pct  { color: #67e8f9; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; text-align: right; }
+.cfm-hover-popover .feat-bar  {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(236,72,153,0.6), rgba(168,85,247,0.6));
+}
+.cfm-hover-popover .feat-bar-track {
+  height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;
+}

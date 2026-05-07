@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GWU MBA Ranking Predictor v3 | Multi-Model What-If Studio</title>
+  <title>GWSB Ranking Analytics Studio | Multi-Model What-If Workspace</title>
   <meta name="description"
-    content="v3 — 5 models (ElasticNet, RF, GBM, MLP, Stacked Ensemble) with unified direct + indirect lever workspace and Monte Carlo rank forecasting." />
-  <meta property="og:title" content="GWU MBA Ranking Predictor v3" />
+    content="Analytical workspace for GWSB's US News MBA ranking — five models (ElasticNet, RF, GBM, MLP, Stacked Ensemble) with unified direct + indirect lever workspace and Monte Carlo rank forecasting." />
+  <meta property="og:title" content="GWSB Ranking Analytics Studio" />
   <meta property="og:description"
-    content="Multi-model what-if studio for MBA ranking forecasts." />
+    content="Five-model what-if workspace for MBA ranking forecasts." />
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
   <link rel="stylesheet" href="/styles/index.css" />
@@ -29,7 +29,7 @@
     <div class="max-w-7xl mx-auto text-center flex flex-col md:flex-row items-center justify-center gap-4">
       <h1 class="text-3xl font-black tracking-tight m-0"
           style="background: linear-gradient(135deg, #ec4899, #a855f7 50%, #06b6d4); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 200%; animation: gradient-shift 8s ease infinite;">
-        MBA Ranking Studio <span style="color:#22d3ee">v3</span>
+        GWSB Ranking Analytics Studio
       </h1>
       <div class="hidden md:block h-6 w-px bg-white/20"></div>
       <p class="text-sm m-0" style="color:#c4b5fd">
@@ -59,77 +59,77 @@
     <!-- TAB 1: What-If Studio                                        -->
     <!-- ============================================================ -->
     <section class="tab-pane" id="tab-studio" role="tabpanel">
-      <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-4">
 
-        <!-- Model selector strip -->
-        <div class="glass-panel p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <p class="text-sm font-semibold text-white">Scoring engine</p>
-            <p class="text-[11px]" style="color:#a78bfa">All five drive the same Monte Carlo. Active engine:
-              <span id="active-engine-badge" class="ml-1 px-2 py-0.5 rounded-md text-xs font-bold border" style="border-color:#22d3ee55;">Stacked Ensemble</span>
-            </p>
-          </div>
-          <div id="model-selector" class="model-selector"></div>
-        </div>
-
-        <!-- Top: rank, score, CI, chart -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div class="flex flex-col gap-4">
-            <div class="glass-panel p-4 flex flex-col justify-center" id="current-info">
-              <div class="flex items-center gap-2 mb-2">
-                <div class="w-2 h-2 rounded-full bg-magenta-400 animate-pulse"></div>
-                <p class="text-gray-400 text-xs uppercase tracking-widest">Current Standing</p>
-              </div>
-              <div class="flex items-center justify-between">
+        <!-- Sticky condensed results bar — always visible during scroll -->
+        <div class="sticky-results">
+          <div class="glass-panel p-3">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+              <!-- Rank badge -->
+              <div class="lg:col-span-3 flex items-center gap-3">
                 <div>
-                  <p class="text-white font-semibold text-sm" id="current-school-name">George Washington University</p>
-                  <p class="text-gray-500 text-xs" id="current-score-label">Score: —</p>
+                  <p class="text-[10px] uppercase tracking-widest text-gray-400">Predicted</p>
+                  <div id="rank-display" class="text-5xl font-black leading-none"
+                       style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #06b6d4 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">#—</div>
+                  <p class="text-[10px] text-gray-500 mt-0.5" id="rank-subtitle">Move sliders to predict</p>
                 </div>
-                <p class="text-3xl font-black" style="color:#f472b6" id="current-rank">#—</p>
               </div>
-            </div>
-
-            <div class="glass-panel p-6 text-center flex-1 flex flex-col justify-center" id="rank-card">
-              <p class="text-gray-400 text-xs uppercase tracking-widest mb-2">Predicted Rank</p>
-              <div id="rank-display" class="rank-display mb-2">#—</div>
-              <p class="text-gray-500 text-xs" id="rank-subtitle">Move sliders to predict</p>
-            </div>
-          </div>
-
-          <div class="lg:col-span-2 flex flex-col gap-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div class="stat-card" id="score-card">
-                <p class="text-gray-400 text-[10px] uppercase tracking-widest mb-1">Scenario Score</p>
-                <p class="text-3xl font-black text-white" id="scenario-score">—</p>
+              <!-- Stats -->
+              <div class="lg:col-span-3 grid grid-cols-2 gap-2">
+                <div class="rounded-lg px-3 py-2" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
+                  <p class="text-[9px] uppercase tracking-widest text-gray-500">Score</p>
+                  <p class="text-lg font-bold text-white" id="scenario-score">—</p>
+                </div>
+                <div class="rounded-lg px-3 py-2" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
+                  <p class="text-[9px] uppercase tracking-widest text-gray-500">90% CI</p>
+                  <p class="text-lg font-bold text-white" id="ci-range">—</p>
+                </div>
               </div>
-              <div class="stat-card" id="ci-card">
-                <p class="text-gray-400 text-[10px] uppercase tracking-widest mb-1">90% CI Range</p>
-                <p class="text-3xl font-black text-white" id="ci-range">—</p>
+              <!-- Mini chart -->
+              <div class="lg:col-span-4 rounded-lg px-2 py-1" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height: 80px;">
+                <canvas id="rankChart" style="max-height: 70px;"></canvas>
               </div>
-            </div>
-            <div class="glass-panel p-4 flex-1">
-              <p class="text-gray-400 text-xs mb-2">Rank Distribution (10,000 Monte Carlo simulations)</p>
-              <canvas id="rankChart"></canvas>
+              <!-- Engine selector compact -->
+              <div class="lg:col-span-2 flex flex-col items-end">
+                <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Engine</p>
+                <div id="model-selector" class="model-selector"></div>
+                <span id="active-engine-badge" class="mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border whitespace-nowrap" style="border-color:#22d3ee55; color:#22d3ee">Stacked</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Lever workspace: direct + indirect side-by-side -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          <div class="flex flex-col gap-3">
+        <!-- Current standing (informational, scrolls with content) -->
+        <div class="glass-panel p-3" id="current-info">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-magenta-400 animate-pulse"></div>
+              <span class="text-gray-400 text-[10px] uppercase tracking-widest">Current standing</span>
+              <span class="text-white font-semibold text-sm" id="current-school-name">George Washington University</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-gray-500 text-xs" id="current-score-label">Score: —</span>
+              <span class="text-2xl font-black" style="color:#f472b6" id="current-rank">#—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lever workspace: direct (9) + indirect (grouped by affected target) -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between">
               <span class="lever-section-pill direct">Direct · 9 indicators</span>
-              <p class="text-[11px] text-gray-500">methodological inputs · drive the rank directly</p>
+              <p class="text-[10px] text-gray-500">methodological inputs · drive the rank directly</p>
             </div>
-            <div id="direct-sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+            <div id="direct-sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
           </div>
 
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between">
-              <span class="lever-section-pill indirect">Indirect · 23 levers</span>
-              <p class="text-[11px] text-gray-500">non-methodological levers · update direct via CFM</p>
+              <span class="lever-section-pill indirect">Indirect · grouped by affected indicator</span>
+              <p class="text-[10px] text-gray-500">CFM-driven · update direct levers in real time</p>
             </div>
-            <div id="lever-sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+            <div id="lever-sliders-container"></div>
           </div>
         </div>
 
@@ -219,7 +219,7 @@
 
   <footer class="max-w-7xl mx-auto px-6 py-3 mt-3 border-t border-white/5">
     <p class="text-center text-gray-600 text-xs">
-      v3 — built for GWSB Operations & Strategic Initiatives, by
+      Built for GWSB Operations & Strategic Initiatives, by
       <a href="https://www.linkedin.com/in/venkateshbn/" target="_blank" rel="noopener noreferrer" class="text-magenta-300 hover:text-magenta-400">asbetos</a>
     </p>
   </footer>

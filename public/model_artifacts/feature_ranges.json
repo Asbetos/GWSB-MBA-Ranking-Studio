@@ -101,12 +101,12 @@
   "_gmat_input_config": {
     "gmat_scale_default": "old",
     "gmat_old_range": {
-      "min": 500,
+      "min": 200,
       "max": 800,
       "step": 5
     },
     "gmat_new_range": {
-      "min": 505,
+      "min": 205,
       "max": 805,
       "step": 5
     },
@@ -127,6 +127,51 @@
     },
     "gre_default_enabled": false
   },
+  "_sbp_cohort": {
+    "Consulting": {
+      "cohort_mean": 171095.7967599411,
+      "cohort_n_total": 2037
+    },
+    "Finance / Accounting": {
+      "cohort_mean": 151540.46085672083,
+      "cohort_n_total": 2031
+    },
+    "General Management": {
+      "cohort_mean": 139047.01797175867,
+      "cohort_n_total": 779
+    },
+    "Marketing / Sales": {
+      "cohort_mean": 131544.3219047619,
+      "cohort_n_total": 1050
+    },
+    "Operations / Production": {
+      "cohort_mean": 120206.0,
+      "cohort_n_total": 431
+    },
+    "Management Information Systems (MIS)": {
+      "cohort_mean": 124329.15476190476,
+      "cohort_n_total": 84
+    },
+    "Human Resources": {
+      "cohort_mean": 100455.36842105263,
+      "cohort_n_total": 38
+    }
+  },
+  "_sbp_occupations": [
+    "Consulting",
+    "Finance / Accounting",
+    "General Management",
+    "Marketing / Sales",
+    "Operations / Production",
+    "Management Information Systems (MIS)",
+    "Human Resources"
+  ],
+  "_sbp_slider": {
+    "min": 60000,
+    "max": 260000,
+    "step": 1000,
+    "format": "dollar"
+  },
   "_gwu_current": {
     "EmployedAtGrad": 0.477,
     "Employed3Mo": 0.708,
@@ -144,7 +189,38 @@
     "gre_aw": 4.5,
     "pct_gmat_old": 0.06,
     "pct_gmat_new": 0.03,
-    "pct_gre": 0.06
+    "pct_gre": 0.06,
+    "fulltime_enrollment": 73.0,
+    "sbp_per_occupation": {
+      "Marketing / Sales": {
+        "salary": 89500.0,
+        "n_reporting": 6.0
+      },
+      "Operations / Production": {
+        "salary": null,
+        "n_reporting": 1.0
+      },
+      "General Management": {
+        "salary": null,
+        "n_reporting": 0.0
+      },
+      "Finance / Accounting": {
+        "salary": 124000.0,
+        "n_reporting": 2.0
+      },
+      "Management Information Systems (MIS)": {
+        "salary": 107500.0,
+        "n_reporting": 2.0
+      },
+      "Consulting": {
+        "salary": 122750.0,
+        "n_reporting": 4.0
+      },
+      "Human Resources": {
+        "salary": null,
+        "n_reporting": 0.0
+      }
+    }
   },
   "_gwu_school_name": "George Washington University",
   "_gwu_current_rank": 69,
