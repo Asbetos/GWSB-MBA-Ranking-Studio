@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GWSB Ranking Analytics Studio | Multi-Model What-If Workspace</title>
+  <title>GWSB Ranking Analytics Studio</title>
   <meta name="description"
-    content="Analytical workspace for GWSB's US News MBA ranking — five models (ElasticNet, RF, GBM, MLP, Stacked Ensemble) with unified direct + indirect lever workspace and Monte Carlo rank forecasting." />
+    content="Cross-model sensitivity and robustness layer for GWSB's US News MBA rank — ElasticNet, Random Forest, GBM, MLP, and a Ridge-stacked ensemble, paired with a unified direct/indirect lever workspace and 10k-draw Monte Carlo rank intervals. Companion to the GWSB Ranking Predictor (v2)." />
   <meta property="og:title" content="GWSB Ranking Analytics Studio" />
   <meta property="og:description"
-    content="Five-model what-if workspace for MBA ranking forecasts." />
+    content="Five-engine sensitivity and rank-interval workbench for the GWSB Ranking Predictor." />
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
   <link rel="stylesheet" href="/styles/index.css" />
@@ -17,7 +17,7 @@
 
 <body class="min-h-screen">
   <!-- Aurora ambient field -->
-  <div class="aurora-field">
+  <div class="aurora-field" aria-hidden="true">
     <div class="aurora-blob aurora-magenta"></div>
     <div class="aurora-blob aurora-violet"></div>
     <div class="aurora-blob aurora-cyan"></div>
@@ -25,124 +25,146 @@
   </div>
 
   <!-- Header -->
-  <header class="pt-5 pb-3 px-6">
-    <div class="max-w-7xl mx-auto text-center flex flex-col md:flex-row items-center justify-center gap-4">
-      <h1 class="text-3xl font-black tracking-tight m-0"
+  <header class="pt-5 pb-3 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto text-center">
+      <h1 class="text-2xl sm:text-3xl font-black tracking-tight m-0"
           style="background: linear-gradient(135deg, #ec4899, #a855f7 50%, #06b6d4); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 200%; animation: gradient-shift 8s ease infinite;">
         GWSB Ranking Analytics Studio
       </h1>
-      <div class="hidden md:block h-6 w-px bg-white/20"></div>
-      <p class="text-sm m-0" style="color:#c4b5fd">
-        Five models · One <span class="text-magenta-300 font-semibold" id="school-name">GWU</span> · Monte Carlo to the future
-      </p>
     </div>
 
     <!-- Tab nav -->
-    <nav class="max-w-7xl mx-auto mt-4 flex justify-center">
+    <nav class="max-w-7xl mx-auto mt-4 flex justify-center" aria-label="Primary">
       <div class="tab-nav" role="tablist">
-        <button class="tab-btn active" data-tab="studio" role="tab" aria-selected="true">
-          <span class="tab-num">1</span> What-If Studio
+        <button class="tab-btn active" data-tab="studio" role="tab" id="tab-btn-studio" aria-controls="tab-studio" aria-selected="true">
+          <span class="tab-num" aria-hidden="true">1</span> <span>What-If Studio</span>
         </button>
-        <button class="tab-btn" data-tab="insights" role="tab" aria-selected="false">
-          <span class="tab-num">2</span> Model Insights
+        <button class="tab-btn" data-tab="insights" role="tab" id="tab-btn-insights" aria-controls="tab-insights" aria-selected="false">
+          <span class="tab-num" aria-hidden="true">2</span> <span>Model Insights</span>
         </button>
-        <button class="tab-btn" data-tab="comparison" role="tab" aria-selected="false">
-          <span class="tab-num">3</span> Per-School Comparison
+        <button class="tab-btn" data-tab="comparison" role="tab" id="tab-btn-comparison" aria-controls="tab-comparison" aria-selected="false">
+          <span class="tab-num" aria-hidden="true">3</span> <span>Per-School Comparison</span>
         </button>
       </div>
     </nav>
   </header>
 
-  <main class="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-6">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col gap-6">
 
     <!-- ============================================================ -->
     <!-- TAB 1: What-If Studio                                        -->
     <!-- ============================================================ -->
-    <section class="tab-pane" id="tab-studio" role="tabpanel">
-      <div class="flex flex-col gap-4">
+    <section class="tab-pane" id="tab-studio" role="tabpanel" aria-labelledby="tab-btn-studio" tabindex="0">
+      <div class="flex flex-col gap-5">
 
-        <!-- Sticky condensed results bar — always visible during scroll -->
-        <div class="sticky-results">
-          <div class="glass-panel p-3">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
-              <!-- Rank badge -->
-              <div class="lg:col-span-3 flex items-center gap-3">
-                <div>
-                  <p class="text-[10px] uppercase tracking-widest text-gray-400">Predicted</p>
-                  <div id="rank-display" class="text-5xl font-black leading-none"
-                       style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #06b6d4 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">#—</div>
-                  <p class="text-[10px] text-gray-500 mt-0.5" id="rank-subtitle">Move sliders to predict</p>
+        <!-- Engine selector strip -->
+        <div class="glass-panel p-3 sm:p-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="min-w-0">
+              <p class="kicker">Scoring engine</p>
+              <p class="text-mini text-gray-400 mt-0.5" id="active-engine-desc">Active engine drives the Monte Carlo below — switch to read cross-model robustness on the same lever setting.</p>
+            </div>
+            <div id="model-selector" class="model-selector" role="group" aria-label="Active scoring engine"></div>
+          </div>
+        </div>
+
+        <!-- v2-style result grid: current + big rank on left, score/CI/chart on right -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+          <!-- Left column: current standing + predicted rank -->
+          <div class="flex flex-col gap-4">
+            <div class="glass-panel p-4 flex flex-col justify-center" id="current-info">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-magenta-400 animate-pulse" aria-hidden="true"></div>
+                <p class="kicker">Published baseline · 2025</p>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-white font-semibold text-sm sm:text-base truncate" id="current-school-name" title="George Washington University">George Washington University</p>
+                  <p class="text-gray-500 text-xs mt-0.5" id="current-score-label">Score: —</p>
                 </div>
+                <p class="text-2xl sm:text-3xl font-bold whitespace-nowrap" style="color:#f472b6" id="current-rank">#—</p>
               </div>
-              <!-- Stats -->
-              <div class="lg:col-span-3 grid grid-cols-2 gap-2">
-                <div class="rounded-lg px-3 py-2" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
-                  <p class="text-[9px] uppercase tracking-widest text-gray-500">Score</p>
-                  <p class="text-lg font-bold text-white" id="scenario-score">—</p>
-                </div>
-                <div class="rounded-lg px-3 py-2" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
-                  <p class="text-[9px] uppercase tracking-widest text-gray-500">90% CI</p>
-                  <p class="text-lg font-bold text-white" id="ci-range">—</p>
-                </div>
+            </div>
+            <div class="glass-panel p-5 sm:p-6 text-center flex-1 flex flex-col justify-center" id="rank-card">
+              <p class="kicker mb-2">Predicted rank &middot; median</p>
+              <div id="rank-display" class="rank-display is-loading mb-2" aria-live="polite" aria-atomic="true">#—</div>
+              <p class="text-gray-500 text-xs" id="rank-subtitle">Loading model artifacts...</p>
+              <div class="mt-3">
+                <span id="active-engine-badge" class="inline-block px-2.5 py-1 rounded-md text-micro font-bold border whitespace-nowrap" style="border-color:#22d3ee55; color:#22d3ee">Stacked</span>
               </div>
-              <!-- Mini chart -->
-              <div class="lg:col-span-4 rounded-lg px-2 py-1" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height: 80px;">
-                <canvas id="rankChart" style="max-height: 70px;"></canvas>
+            </div>
+          </div>
+          <!-- Right column: stat cards + full-size distribution chart -->
+          <div class="lg:col-span-2 flex flex-col gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="stat-card" id="score-card" title="Engine-predicted Overall Score after residual anchoring (0–100 scale, calibrated so #1 = 100).">
+                <p class="kicker mb-1">Scenario score</p>
+                <p class="text-2xl sm:text-3xl font-bold text-white" id="scenario-score" aria-live="polite">—</p>
+                <p class="text-micro text-gray-500 mt-1">residual-anchored prediction</p>
               </div>
-              <!-- Engine selector compact -->
-              <div class="lg:col-span-2 flex flex-col items-end">
-                <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Engine</p>
-                <div id="model-selector" class="model-selector"></div>
-                <span id="active-engine-badge" class="mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border whitespace-nowrap" style="border-color:#22d3ee55; color:#22d3ee">Stacked</span>
+              <div class="stat-card" id="ci-card" title="5th–95th percentile of the 10,000-draw rank distribution under tier-calibrated competitor noise.">
+                <p class="kicker mb-1">Rank · 90% CI</p>
+                <p class="text-2xl sm:text-3xl font-bold text-white" id="ci-range" aria-live="polite">—</p>
+                <p class="text-micro text-gray-500 mt-1">p5–p95 across 10k draws</p>
               </div>
+            </div>
+            <div class="glass-panel p-4 flex-1">
+              <div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                <p class="text-gray-300 text-sm font-medium">Rank distribution</p>
+                <p class="text-micro text-gray-500">10,000 Monte Carlo draws · rank-tier-calibrated competitor noise</p>
+              </div>
+              <canvas id="rankChart" aria-label="Histogram of 10,000 Monte Carlo rank draws"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Current standing (informational, scrolls with content) -->
-        <div class="glass-panel p-3" id="current-info">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-2 h-2 rounded-full bg-magenta-400 animate-pulse"></div>
-              <span class="text-gray-400 text-[10px] uppercase tracking-widest">Current standing</span>
-              <span class="text-white font-semibold text-sm" id="current-school-name">George Washington University</span>
+        <!-- Lever-mode toggle: direct OR indirect, not both -->
+        <div class="glass-panel p-3 sm:p-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="min-w-0">
+              <p class="kicker">Lever mode</p>
+              <p class="text-mini text-gray-400 mt-0.5" id="mode-description">
+                <strong class="text-white">Direct</strong> — simulation reads the nine US News methodology indicators straight from the sliders. Indirect levers are inactive.
+              </p>
             </div>
-            <div class="flex items-center gap-3">
-              <span class="text-gray-500 text-xs" id="current-score-label">Score: —</span>
-              <span class="text-2xl font-black" style="color:#f472b6" id="current-rank">#—</span>
+            <div class="mode-toggle" role="tablist" aria-label="Lever mode">
+              <button class="mode-btn active" data-mode="direct" role="tab" aria-selected="true">Direct · 9 indicators</button>
+              <button class="mode-btn" data-mode="indirect" role="tab" aria-selected="false">Indirect · CFM-routed</button>
             </div>
           </div>
         </div>
 
-        <!-- Lever workspace: direct (9) + indirect (grouped by affected target) -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
+        <!-- Lever workspace: one mode interactive, the other dimmed -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-2">
+          <div class="flex flex-col gap-2 lever-panel" data-lever-panel="direct">
+            <div class="flex flex-wrap items-center justify-between gap-2">
               <span class="lever-section-pill direct">Direct · 9 indicators</span>
-              <p class="text-[10px] text-gray-500">methodological inputs · drive the rank directly</p>
+              <p class="text-micro text-gray-500 flex-1 text-right min-w-0">US News methodology inputs · enter the scoring function as-is</p>
             </div>
             <div id="direct-sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="lever-section-pill indirect">Indirect · grouped by affected indicator</span>
-              <p class="text-[10px] text-gray-500">CFM-driven · update direct levers in real time</p>
+          <div class="flex flex-col gap-2 lever-panel lever-inactive" data-lever-panel="indirect">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="lever-section-pill indirect">Indirect · grouped by indicator</span>
+              <p class="text-micro text-gray-500 flex-1 text-right min-w-0">operational levers · routed through the Core Feature Models, then into the direct sliders</p>
             </div>
             <div id="lever-sliders-container"></div>
           </div>
         </div>
 
         <div class="flex justify-end pt-1">
-          <button id="reset-btn" class="reset-btn">↺ Reset everything to GWU current</button>
+          <button id="reset-btn" class="reset-btn" type="button">
+            <span aria-hidden="true">↺</span>
+            <span>Reset all levers to GWU's 2025 values</span>
+          </button>
         </div>
 
-        <div class="glass-panel p-3 border-amber-500/30 mt-1">
-          <p class="text-[12px]" style="color:#fcd34d">
-            <strong>How it works:</strong>
-            Indirect lever changes are piped through the Core Feature Models (CFMs) and update the direct sliders in real time;
-            you can override any direct slider afterward and your value wins.
-            All five model engines share the same Monte Carlo rank simulator (10k sims, tiered Gaussian noise).
+        <div class="glass-panel p-3 sm:p-4 border-amber-500/30 mt-1">
+          <p class="text-mini" style="color:#fcd34d">
+            <strong>How the workspace composes:</strong>
+            In <strong>Direct</strong> mode the simulation reads the nine methodology indicators straight from the sliders. In <strong>Indirect</strong> mode the operational levers feed the eight Core Feature Models (RidgeCV/ElasticNetCV pipelines fitted per indicator), whose predictions populate the direct sliders read-only and then feed the same simulation. Only one set is interactive at a time — switch modes to compare lever pathways without their values colliding.
+            The active scoring engine then runs a residual-anchored Monte Carlo (10,000 draws · rank-tier-calibrated Gaussian noise on competitor scores), so the rank median and 90% interval above always correspond to the engine selected at top.
           </p>
         </div>
       </div>
@@ -151,40 +173,43 @@
     <!-- ============================================================ -->
     <!-- TAB 2: Model Insights                                        -->
     <!-- ============================================================ -->
-    <section class="tab-pane hidden" id="tab-insights" role="tabpanel">
+    <section class="tab-pane hidden" id="tab-insights" role="tabpanel" aria-labelledby="tab-btn-insights" tabindex="0">
       <div class="flex flex-col gap-5">
-        <div class="glass-panel p-5">
-          <h2 class="text-xl font-bold text-white mb-1">Five-Model Performance & Internals</h2>
-          <p class="text-[12px]" style="color:#c4b5fd">
-            All models trained on the stacked 2024 + 2025 panel (~243 observations × 9 indicators).
-            Performance reported via 5-fold cross-validated predictions on the published US News Overall Score.
+        <div class="glass-panel p-4 sm:p-5">
+          <h2 class="text-lg sm:text-xl font-bold text-white mb-1">Engine diagnostics &amp; feature signals</h2>
+          <p class="text-mini" style="color:#c4b5fd">
+            Side-by-side fit statistics for the five scoring engines, all trained on the stacked 2024 + 2025 panel (n &asymp; 243 school-years &times; 9 indicators) and evaluated via 5-fold cross-validation against the published US News Overall Score.
+            The ElasticNet engine here is the same Direct Score Model that powers the GWSB Ranking Predictor (v2) — use this tab to read v2's coefficients in context, and to triangulate whether the v2 linear fit holds up against the four non-linear alternatives before committing to a recommendation.
           </p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div class="lg:col-span-2 glass-panel p-5">
-            <h3 class="text-base font-semibold text-white mb-3">Performance matrix</h3>
-            <div id="mi-perf-matrix"></div>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5">
+          <div class="xl:col-span-2 glass-panel p-4 sm:p-5">
+            <h3 class="panel-h2 mb-1">Cross-validated fit matrix</h3>
+            <p class="panel-sub mb-3">MAE/RMSE in published-score points · R&sup2; is share of explained variance · Spearman &rho; is rank-order agreement with US News.</p>
+            <div id="mi-perf-matrix" class="overflow-x-auto"></div>
           </div>
-          <div class="glass-panel p-5">
-            <h3 class="text-base font-semibold text-white mb-3">R² vs MAE</h3>
+          <div class="glass-panel p-4 sm:p-5">
+            <h3 class="panel-h2 mb-1">R&sup2; vs. MAE</h3>
+            <p class="panel-sub mb-3">Top-right = high explained variance with low error.</p>
             <div class="perf-chart-wrap" style="height: 260px;">
-              <canvas id="mi-perf-chart"></canvas>
+              <canvas id="mi-perf-chart" aria-label="Bar chart comparing R² and MAE across five engines"></canvas>
             </div>
           </div>
         </div>
 
-        <div class="glass-panel p-5">
+        <div class="glass-panel p-4 sm:p-5">
           <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 class="text-base font-semibold text-white" id="mi-importance-title">Feature signals</h3>
-              <p class="text-[11px] text-gray-500" id="mi-importance-sub"></p>
+            <div class="min-w-0">
+              <h3 class="panel-h2" id="mi-importance-title">Per-indicator signal</h3>
+              <p class="panel-sub mt-0.5" id="mi-importance-sub"></p>
             </div>
-            <div id="mi-model-picker" class="model-selector"></div>
+            <div id="mi-model-picker" class="model-selector" role="group" aria-label="Engine for per-indicator signal chart"></div>
           </div>
           <div class="perf-chart-wrap" style="height: 380px;">
-            <canvas id="mi-importance-chart"></canvas>
+            <canvas id="mi-importance-chart" aria-label="Per-indicator feature signal chart"></canvas>
           </div>
+          <p class="panel-sub mt-3">Signed coefficients (ElasticNet, Stacked meta-learner) reveal direction; tree-based importances and MLP weight magnitudes are unsigned and only express relative leverage. Compare across engines to identify indicators whose effect direction is method-robust vs. method-dependent.</p>
         </div>
       </div>
     </section>
@@ -192,35 +217,44 @@
     <!-- ============================================================ -->
     <!-- TAB 3: Per-School Comparison                                 -->
     <!-- ============================================================ -->
-    <section class="tab-pane hidden" id="tab-comparison" role="tabpanel">
+    <section class="tab-pane hidden" id="tab-comparison" role="tabpanel" aria-labelledby="tab-btn-comparison" tabindex="0">
       <div class="flex flex-col gap-5">
-        <div class="glass-panel p-5">
-          <h2 class="text-xl font-bold text-white mb-1">Per-School: Published vs. All 5 Models</h2>
-          <p class="text-[12px]" style="color:#c4b5fd">
-            Cohort: <span id="cmp-snapshot-year">2025</span>. Δrank = (model rank − published rank).
-            Sort by absolute disagreement to find where each model diverges from US News most.
+        <div class="glass-panel p-4 sm:p-5">
+          <h2 class="text-lg sm:text-xl font-bold text-white mb-1">Cohort disagreement · published vs. five engines</h2>
+          <p class="text-mini" style="color:#c4b5fd">
+            Engine-by-engine rank reconciliation against the published US News ranking for the
+            <span id="cmp-snapshot-year">2025</span> cohort.
+            &Delta;rank = (model rank &minus; published rank); positive values mean the engine placed the school <em>worse</em> than US News did.
+            Sort by |&Delta;| to surface the schools where a given engine systematically dissents from the published methodology — these are the cells worth opening when validating a v2 recommendation, refining a Core Feature Model, or sourcing rebuttal data for indicator submissions.
           </p>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" id="cmp-summary-cards"></div>
 
-        <div class="glass-panel p-5">
-          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
-            <input type="text" id="cmp-search" placeholder="Search school..."
-              class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-magenta-500/50 flex-1 max-w-xs" />
-            <div class="flex flex-wrap gap-1.5" id="cmp-sort-buttons"></div>
+        <div class="glass-panel p-4 sm:p-5">
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-2">
+            <div class="min-w-0">
+              <h3 class="panel-h2">Per-school reconciliation</h3>
+              <p class="panel-sub">Search to focus on a peer set; sort by |&Delta;| for one engine to isolate that engine's worst disagreements.</p>
+            </div>
+            <label class="relative flex-1 max-w-full sm:max-w-xs">
+              <span class="sr-only">Search school</span>
+              <input type="text" id="cmp-search" placeholder="Search school..."
+                class="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-magenta-500/50" />
+            </label>
           </div>
-          <div id="cmp-table-wrap" class="overflow-x-auto" style="max-height: 580px;"></div>
+          <div class="flex flex-wrap gap-1.5 mb-3" id="cmp-sort-buttons" role="group" aria-label="Sort comparison table"></div>
+          <div id="cmp-table-wrap" class="cmp-table-shell overflow-x-auto overflow-y-auto" style="max-height: 580px;"></div>
         </div>
       </div>
     </section>
 
   </main>
 
-  <footer class="max-w-7xl mx-auto px-6 py-3 mt-3 border-t border-white/5">
-    <p class="text-center text-gray-600 text-xs">
-      Built for GWSB Operations & Strategic Initiatives, by
-      <a href="https://www.linkedin.com/in/venkateshbn/" target="_blank" rel="noopener noreferrer" class="text-magenta-300 hover:text-magenta-400">asbetos</a>
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 py-3 mt-3 border-t border-white/5">
+    <p class="text-center text-gray-500 text-xs">
+      Built for GWSB Operations &amp; Strategic Initiatives, by
+      <a href="https://www.linkedin.com/in/venkateshbn/" target="_blank" rel="noopener noreferrer" class="text-magenta-300 hover:text-magenta-200 underline-offset-2 hover:underline">asbetos</a>
     </p>
   </footer>
 

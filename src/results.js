@@ -38,13 +38,14 @@ export function updateResults(results) {
   // 1. Rank display with animation
   const rankEl = document.getElementById('rank-display');
   if (rankEl) {
+    rankEl.classList.remove('is-loading');
     animateNumber(rankEl, medianRank);
   }
 
   // Subtitle
   const subtitle = document.getElementById('rank-subtitle');
   if (subtitle) {
-    subtitle.textContent = `Median from 10,000 simulations`;
+    subtitle.textContent = `Median across 10,000 Monte Carlo draws`;
   }
 
   // 2. Scenario Score
@@ -121,7 +122,7 @@ function updateChart(distribution, medianRank, range90) {
             padding: 12,
             callbacks: {
               title: (items) => `Rank #${items[0].label}`,
-              label: (item) => `Probability: ${item.raw.toFixed(1)}%`,
+              label: (item) => `Simulated probability: ${item.raw.toFixed(1)}%`,
             }
           }
         },
@@ -169,18 +170,14 @@ function updateChart(distribution, medianRank, range90) {
 /** Show initial current GWU info */
 export function showCurrentInfo(schoolName, rank, score) {
   const nameEl = document.getElementById('current-school-name');
-  if (nameEl) nameEl.textContent = schoolName;
+  if (nameEl) {
+    nameEl.textContent = schoolName;
+    nameEl.title = schoolName;
+  }
 
   const rankEl = document.getElementById('current-rank');
-  if (rankEl) rankEl.textContent = `#${rank}`;
+  if (rankEl) rankEl.textContent = rank != null ? `#${rank}` : '#—';
 
   const scoreEl = document.getElementById('current-score-label');
-  if (scoreEl) scoreEl.textContent = `Score: ${score}`;
-
-  const schoolLabel = document.getElementById('school-name');
-  if (schoolLabel) {
-    // Extract short name (e.g., "George Washington University" → "GWU's")
-    const shortName = schoolName.includes('George Washington') ? "GWU's" : `${schoolName}'s`;
-    schoolLabel.textContent = shortName;
-  }
+  if (scoreEl) scoreEl.textContent = score != null ? `Score: ${score}` : 'Score: —';
 }

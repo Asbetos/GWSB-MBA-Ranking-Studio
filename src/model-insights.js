@@ -39,34 +39,34 @@ function renderPerformanceMatrix() {
     return `
       <tr class="border-b border-white/5 hover:bg-white/[0.02]">
         <td class="py-2.5 px-3 text-sm text-white">
-          <div class="flex items-center gap-2">
-            <span class="model-dot" style="background:${meta.color}; width:0.65rem; height:0.65rem; border-radius:9999px; box-shadow:0 0 8px ${meta.color}88; display:inline-block;"></span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="model-dot" style="background:${meta.color}; width:0.6rem; height:0.6rem; border-radius:9999px; box-shadow:0 0 8px ${meta.color}88; display:inline-block; flex-shrink:0;" aria-hidden="true"></span>
             <span class="font-semibold">${meta.label}</span>
-            <span class="text-[10px] text-gray-500">${meta.short}</span>
+            <span class="text-micro text-gray-500">${meta.short}</span>
           </div>
-          <p class="text-[10px] text-gray-500 mt-0.5">${meta.description}</p>
+          <p class="text-micro text-gray-500 mt-0.5 leading-snug">${meta.description}</p>
         </td>
-        <td class="py-2.5 px-3 text-right font-mono text-sm" style="color:${meta.color}">${fmtN(p.mae, 2)}</td>
-        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200">${fmtN(p.rmse, 2)}</td>
-        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200">${fmtN(p.r2, 4)}</td>
-        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200">${fmtN(p.spearman, 4)}</td>
+        <td class="py-2.5 px-3 text-right font-mono text-sm whitespace-nowrap" style="color:${meta.color}">${fmtN(p.mae, 2)}</td>
+        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200 whitespace-nowrap">${fmtN(p.rmse, 2)}</td>
+        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200 whitespace-nowrap">${fmtN(p.r2, 4)}</td>
+        <td class="py-2.5 px-3 text-right font-mono text-sm text-gray-200 whitespace-nowrap">${fmtN(p.spearman, 4)}</td>
       </tr>
     `;
   }).join('');
   wrap.innerHTML = `
-    <table class="w-full text-sm">
+    <table class="w-full text-sm" style="min-width: 520px;">
       <thead>
-        <tr class="text-gray-500 text-[11px] uppercase tracking-widest border-b border-white/10">
-          <th class="text-left py-2 px-3 font-medium">Model</th>
-          <th class="text-right py-2 px-3 font-medium">MAE</th>
-          <th class="text-right py-2 px-3 font-medium">RMSE</th>
-          <th class="text-right py-2 px-3 font-medium">R²</th>
-          <th class="text-right py-2 px-3 font-medium">Spearman ρ</th>
+        <tr class="text-gray-500 text-micro uppercase tracking-widest border-b border-white/10">
+          <th class="text-left py-2 px-3 font-medium">Engine</th>
+          <th class="text-right py-2 px-3 font-medium whitespace-nowrap" title="Mean Absolute Error — average score miss in published-score points.">MAE</th>
+          <th class="text-right py-2 px-3 font-medium whitespace-nowrap" title="Root Mean Squared Error — penalizes large misses more than MAE.">RMSE</th>
+          <th class="text-right py-2 px-3 font-medium whitespace-nowrap" title="Coefficient of determination — share of score variance explained; 1.00 = perfect.">R&sup2;</th>
+          <th class="text-right py-2 px-3 font-medium whitespace-nowrap" title="Rank-order correlation against US News' published ranking; 1.00 = identical ordering.">Spearman &rho;</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
-    <p class="text-[10px] text-gray-500 mt-3">5-fold cross-validated. Lower MAE / RMSE is better; higher R² and Spearman ρ are better.</p>
+    <p class="text-micro text-gray-500 mt-3 leading-snug">5-fold CV on the stacked 2024 + 2025 panel. MAE/RMSE: lower is better. R&sup2;, Spearman &rho;: higher is better. Read across rows to compare engines on the same metric; engines that agree on R&sup2; but diverge on Spearman &rho; are mis-ordering schools without mis-scoring them.</p>
   `;
 }
 
@@ -119,21 +119,23 @@ function renderImportanceForModel(modelKey) {
   if (modelKey === 'elasticnet') {
     labels = a.feature_names.map(f => FEATURE_LABELS[f] || f);
     values = a.coef.slice();
-    sub = 'Linear coefficients (signed). Magnitude = strength; sign = direction.';
+    sub = 'Standardized linear coefficients (signed). One-σ change in the indicator → Δ predicted score = bar value. Same coefficients as v2\'s Direct Score Model.';
   } else if (modelKey === 'randomforest' || modelKey === 'gradientboost') {
     labels = a.feature_names.map(f => FEATURE_LABELS[f] || f);
     values = (a.feature_importances || []).slice();
-    sub = 'Tree-based feature importance (Gini / variance reduction). Always positive.';
+    sub = modelKey === 'randomforest'
+      ? 'Random Forest feature importances (mean impurity decrease across all trees). Unsigned — magnitude reflects how often and how strongly the feature splits the data; direction must be inferred from partial dependence.'
+      : 'Gradient Boosting feature importances (cumulative gain across boosting rounds). Unsigned — large magnitudes flag features the boosting sequence relies on most heavily.';
   } else if (modelKey === 'mlp') {
     // No first-class importance; use the L1 norm of input weights to first hidden layer
     labels = a.feature_names.map(f => FEATURE_LABELS[f] || f);
     const W0 = a.weights[0];
     values = W0.map(rowW => rowW.reduce((s, v) => s + Math.abs(v), 0));
-    sub = `MLP input-layer weight magnitudes (L1 across first hidden layer). Layers: ${a.layer_sizes.join(' → ')}.`;
+    sub = `MLP input-layer leverage — L1 norm of each feature's weights into the first hidden layer (unsigned). Architecture: ${a.layer_sizes.join(' → ')}, ReLU activations. A proxy for influence in the absence of a closed-form importance.`;
   } else if (modelKey === 'stacked') {
     labels = a.base_order.map(n => MODEL_META[n].label);
     values = a.meta_coef.slice();
-    sub = `Ridge meta-learner coefficients over base predictions. Intercept = ${fmtN(a.meta_intercept, 2)}.`;
+    sub = `Ridge meta-learner weights over the four base-engine predictions (signed). Intercept = ${fmtN(a.meta_intercept, 2)}. Weights sum to ≈ 1 and reveal which base engines the ensemble leans on for this panel.`;
   }
 
   // Sort by |value| desc

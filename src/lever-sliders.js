@@ -70,12 +70,12 @@ function buildSimpleLever(meta) {
   wrap.className = 'slider-container';
   wrap.dataset.leverKey = meta.key;
   wrap.innerHTML = `
-    <div class="flex items-center justify-between mb-1.5">
-      <label class="text-[11px] font-semibold text-gray-300 truncate" for="${id}-range" title="${meta.label}">${meta.label}</label>
-      <span class="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" data-role="value">${fmt(meta.format, meta.gwu_current)}</span>
+    <div class="flex items-center justify-between gap-2 mb-1.5">
+      <label class="text-mini font-semibold text-gray-300 truncate" for="${id}-range" title="${meta.label}">${meta.label}</label>
+      <span class="text-mini font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" data-role="value">${fmt(meta.format, meta.gwu_current)}</span>
     </div>
-    <input type="range" id="${id}-range" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${meta.gwu_current}" />
-    <div class="flex justify-between mt-0.5 text-[9px] text-gray-600">
+    <input type="range" id="${id}-range" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${meta.gwu_current}" aria-label="${meta.label}" />
+    <div class="flex justify-between mt-0.5 text-micro text-gray-600">
       <span>${fmt(meta.format, meta.min)}</span>
       <span>${fmt(meta.format, meta.max)}</span>
     </div>
@@ -93,12 +93,12 @@ function buildCountLever(meta, enrollment) {
   wrap.dataset.leverKey = meta.key;
   wrap.dataset.role = 'count';
   wrap.innerHTML = `
-    <div class="flex items-center justify-between mb-1.5">
-      <label class="text-[11px] font-semibold text-gray-300 truncate" for="${id}-range" title="${meta.label}">${meta.label}</label>
-      <span class="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" data-role="value">${initialCount} of ${enrollment}</span>
+    <div class="flex items-center justify-between gap-2 mb-1.5">
+      <label class="text-mini font-semibold text-gray-300 truncate" for="${id}-range" title="${meta.label}">${meta.label}</label>
+      <span class="text-mini font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" data-role="value">${initialCount} of ${enrollment}</span>
     </div>
-    <input type="range" id="${id}-range" min="0" max="${max}" step="1" value="${initialCount}" />
-    <div class="flex justify-between mt-0.5 text-[9px] text-gray-600">
+    <input type="range" id="${id}-range" min="0" max="${max}" step="1" value="${initialCount}" aria-label="${meta.label}" />
+    <div class="flex justify-between mt-0.5 text-micro text-gray-600">
       <span>0</span>
       <span>${max}</span>
     </div>
@@ -160,12 +160,12 @@ function buildCfmPopover(target, label) {
     : '';
   return `
     <div class="cfm-hover-popover" role="tooltip">
-      <div class="flex items-center justify-between mb-1.5">
-        <h4>CFM · ${label}</h4>
+      <div class="flex items-center justify-between gap-2 mb-1.5">
+        <h4>CFM &middot; ${label}</h4>
         ${confBadge}
       </div>
       <div class="space-y-0.5">${rows}</div>
-      <p class="text-[10px] text-gray-500 mt-2">% = |coefficient| share among the top 8 features used to predict ${label}.</p>
+      <p class="text-micro text-gray-500 mt-2 leading-relaxed">Top-8 standardized features in the ${label} CFM, ranked by |coefficient| share. Sign (&plusmn;) indicates direction; confidence badge reflects out-of-sample fit on the held-out year.</p>
     </div>
   `;
 }
@@ -177,10 +177,10 @@ function buildSection(target, label, levers, enrollment) {
   const color = CORE_COLORS[target] || '#6b7280';
   const popover = buildCfmPopover(target, label);
   sec.innerHTML = `
-    <div class="flex items-center gap-2 mt-2 mb-1.5 cfm-hover-host" tabindex="0" style="cursor: help;">
-      <span class="lever-group-pip" style="background:${color}; box-shadow:0 0 8px ${color}aa;"></span>
+    <div class="flex flex-wrap items-center gap-2 mt-2 mb-1.5 cfm-hover-host" tabindex="0" role="button" aria-label="CFM details for ${label}" style="cursor: help;">
+      <span class="lever-group-pip" style="background:${color}; box-shadow:0 0 8px ${color}aa;" aria-hidden="true"></span>
       <p class="text-xs font-bold uppercase tracking-widest" style="color:${color}">${label}</p>
-      <span class="text-[10px] text-gray-500">${levers.length} lever${levers.length === 1 ? '' : 's'} · hover for CFM features</span>
+      <span class="text-micro text-gray-500">${levers.length} lever${levers.length === 1 ? '' : 's'} &middot; hover or focus for CFM top features &amp; fit confidence</span>
       ${popover}
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lever-section-${target}"></div>

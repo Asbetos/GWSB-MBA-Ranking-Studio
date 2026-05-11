@@ -32,15 +32,15 @@ function buildSlider(featureKey, config, initialValue) {
   c.id = `slider-${featureKey}`;
   const { min, max, step, label, format } = config;
   c.innerHTML = `
-    <div class="flex items-center justify-between mb-1.5">
-      <label class="text-xs font-semibold text-gray-300" for="range-${featureKey}">${label}</label>
-      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md cursor-pointer hover:bg-magenta-500/20 transition" id="value-${featureKey}" title="Click to edit">${fmt(initialValue, format)}</span>
+    <div class="flex items-center justify-between gap-2 mb-1.5">
+      <label class="text-xs font-semibold text-gray-300 truncate" for="range-${featureKey}" title="${label}">${label}</label>
+      <span role="button" tabindex="0" class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md cursor-pointer hover:bg-magenta-500/20 transition whitespace-nowrap" id="value-${featureKey}" title="Click to edit numerically">${fmt(initialValue, format)}</span>
       <input type="number" id="input-${featureKey}" class="hidden w-24 bg-ink-800 border border-magenta-500/40 text-magenta-300 rounded px-1.5 py-0.5 text-xs font-mono text-right focus:outline-none focus:border-magenta-500" min="${min}" max="${max}" step="${step}" value="${initialValue}" />
     </div>
-    <input type="range" id="range-${featureKey}" min="${min}" max="${max}" step="${step}" value="${initialValue}" />
+    <input type="range" id="range-${featureKey}" min="${min}" max="${max}" step="${step}" value="${initialValue}" aria-label="${label}" />
     <div class="flex justify-between mt-1">
-      <span class="text-[10px] text-gray-600">${fmt(min, format)}</span>
-      <span class="text-[10px] text-gray-600">${fmt(max, format)}</span>
+      <span class="text-micro text-gray-600">${fmt(min, format)}</span>
+      <span class="text-micro text-gray-600">${fmt(max, format)}</span>
     </div>
   `;
   return c;
@@ -61,37 +61,37 @@ function buildGmatComposite(gmatCfg, gwuValues) {
   gmatState = { scale: sd, gmat_score: initG, gre_q: initQ, gre_v: initV, gre_aw: initAW, gre_enabled: greOn };
 
   wrap.innerHTML = `
-    <div class="flex items-center justify-between mb-1.5">
+    <div class="flex items-center justify-between gap-2 mb-1.5">
       <label class="text-xs font-semibold text-gray-300">GMAT / GRE Score</label>
-      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md" id="value-GMAT_Combined">—</span>
+      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-GMAT_Combined">—</span>
     </div>
-    <div class="flex gap-1 mb-2 text-[10px]">
-      <button type="button" data-gmat-scale="old" class="gmat-scale-btn px-2 py-0.5 rounded ${sd === 'old' ? 'active' : ''}">Old GMAT</button>
-      <button type="button" data-gmat-scale="new" class="gmat-scale-btn px-2 py-0.5 rounded ${sd === 'new' ? 'active' : ''}">New GMAT</button>
+    <div class="flex gap-1 mb-2" role="group" aria-label="GMAT scale">
+      <button type="button" data-gmat-scale="old" class="gmat-scale-btn ${sd === 'old' ? 'active' : ''}">Old GMAT</button>
+      <button type="button" data-gmat-scale="new" class="gmat-scale-btn ${sd === 'new' ? 'active' : ''}">New GMAT</button>
     </div>
-    <input type="range" id="range-GMAT_Score" min="${sd === 'old' ? oldR.min : newR.min}" max="${sd === 'old' ? oldR.max : newR.max}" step="${sd === 'old' ? oldR.step : newR.step}" value="${initG}" />
-    <div class="flex justify-between mt-1 text-[10px] text-gray-600">
+    <input type="range" id="range-GMAT_Score" min="${sd === 'old' ? oldR.min : newR.min}" max="${sd === 'old' ? oldR.max : newR.max}" step="${sd === 'old' ? oldR.step : newR.step}" value="${initG}" aria-label="GMAT score" />
+    <div class="flex justify-between mt-1 text-micro text-gray-600">
       <span id="gmat-min-label">${sd === 'old' ? oldR.min : newR.min}</span>
       <span class="text-magenta-300 font-mono" id="gmat-score-display">${Math.round(initG)}</span>
       <span id="gmat-max-label">${sd === 'old' ? oldR.max : newR.max}</span>
     </div>
     <div class="mt-3 pt-2 border-t border-white/5">
-      <label class="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer">
+      <label class="flex items-center gap-1.5 text-micro text-gray-400 cursor-pointer">
         <input type="checkbox" id="gre-toggle" ${greOn ? 'checked' : ''} class="accent-magenta-500" />
         GRE (40Q + 40V + 20AW)
       </label>
-      <div id="gre-controls" class="mt-1.5 ${greOn ? '' : 'hidden'} space-y-1">
+      <div id="gre-controls" class="mt-1.5 ${greOn ? '' : 'hidden'} space-y-1.5">
         <div>
-          <div class="flex justify-between text-[10px] text-gray-500"><span>GRE Q</span><span class="text-cyan-300 font-mono" id="gre-q-display">${initQ}</span></div>
-          <input type="range" id="range-GRE_Q" min="${qR.min}" max="${qR.max}" step="${qR.step}" value="${initQ}" />
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE Q</span><span class="text-cyan-300 font-mono" id="gre-q-display">${initQ}</span></div>
+          <input type="range" id="range-GRE_Q" min="${qR.min}" max="${qR.max}" step="${qR.step}" value="${initQ}" aria-label="GRE quantitative" />
         </div>
         <div>
-          <div class="flex justify-between text-[10px] text-gray-500"><span>GRE V</span><span class="text-cyan-300 font-mono" id="gre-v-display">${initV}</span></div>
-          <input type="range" id="range-GRE_V" min="${vR.min}" max="${vR.max}" step="${vR.step}" value="${initV}" />
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE V</span><span class="text-cyan-300 font-mono" id="gre-v-display">${initV}</span></div>
+          <input type="range" id="range-GRE_V" min="${vR.min}" max="${vR.max}" step="${vR.step}" value="${initV}" aria-label="GRE verbal" />
         </div>
         <div>
-          <div class="flex justify-between text-[10px] text-gray-500"><span>GRE AW</span><span class="text-cyan-300 font-mono" id="gre-aw-display">${initAW.toFixed(1)}</span></div>
-          <input type="range" id="range-GRE_AW" min="${awR.min}" max="${awR.max}" step="${awR.step}" value="${initAW}" />
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE AW</span><span class="text-cyan-300 font-mono" id="gre-aw-display">${initAW.toFixed(1)}</span></div>
+          <input type="range" id="range-GRE_AW" min="${awR.min}" max="${awR.max}" step="${awR.step}" value="${initAW}" aria-label="GRE analytical writing" />
         </div>
       </div>
     </div>
@@ -183,32 +183,34 @@ function buildSBPComposite(sbpCfg, gwuSBP) {
     const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
     return `
       <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
-        <div class="flex items-center justify-between mb-0.5">
-          <p class="text-[11px] font-semibold text-white">${occ}</p>
-          <span class="text-[9px] text-gray-500">${cmStr}</span>
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <p class="text-mini font-semibold text-white truncate" title="${occ}">${occ}</p>
+          <span class="text-micro text-gray-500 whitespace-nowrap">${cmStr}</span>
         </div>
         <div class="flex items-center gap-1.5">
           <input type="range" id="sbp-sal-${safeKey}" data-occ="${occ}" data-role="salary"
-                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${init.salary}" class="flex-1" />
+                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${init.salary}" class="flex-1"
+                 aria-label="${occ} median salary" />
           <input type="number" id="sbp-n-${safeKey}" data-occ="${occ}" data-role="n"
                  min="0" max="200" step="1" value="${init.n}"
-                 class="w-11 bg-ink-800 border border-white/10 text-emerald-300 rounded px-1 py-0.5 text-[10px] font-mono text-right" title="number of reporting graduates" />
+                 class="w-11 bg-ink-800 border border-white/10 text-emerald-300 rounded px-1 py-0.5 text-micro font-mono text-right focus:outline-none focus:border-emerald-500"
+                 title="number of reporting graduates" aria-label="${occ} reporting count" />
         </div>
         <div class="flex justify-between mt-0.5">
-          <span class="text-[9px] text-magenta-300 font-mono" id="sbp-sal-disp-${safeKey}">$${Math.round(init.salary).toLocaleString()}</span>
-          <span class="text-[9px] text-gray-500">n≥3 to count</span>
+          <span class="text-micro text-magenta-300 font-mono" id="sbp-sal-disp-${safeKey}">$${Math.round(init.salary).toLocaleString()}</span>
+          <span class="text-micro text-gray-500">n &ge; 3 required</span>
         </div>
       </div>
     `;
   }).join('');
 
   wrap.innerHTML = `
-    <div class="flex items-center justify-between mb-1.5">
-      <div>
-        <label class="text-xs font-semibold text-gray-300">Salary by Profession</label>
-        <p class="text-[9px] text-gray-500">Per-industry salary × cohort ratio (drops industries with &lt;3 reporters).</p>
+    <div class="flex items-start justify-between gap-2 mb-1.5">
+      <div class="min-w-0">
+        <label class="text-xs font-semibold text-gray-300">Salary by Profession (cohort-relative)</label>
+        <p class="text-micro text-gray-500 mt-0.5">n-weighted mean of (industry salary &divide; cohort mean). Industries with &lt;3 reporters excluded, mirroring US News.</p>
       </div>
-      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md" id="value-SalaryByProfession">—</span>
+      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-SalaryByProfession">—</span>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">${rows}</div>
   `;
@@ -294,7 +296,11 @@ export function initSliders(containerId, onChange) {
       fireChange();
     };
     r.addEventListener('input', e => set(parseFloat(e.target.value)));
-    d.addEventListener('click', () => { d.classList.add('hidden'); ni.classList.remove('hidden'); ni.focus(); });
+    const enterEditMode = () => { d.classList.add('hidden'); ni.classList.remove('hidden'); ni.focus(); ni.select(); };
+    d.addEventListener('click', enterEditMode);
+    d.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enterEditMode(); }
+    });
     const commit = () => {
       const v = parseFloat(ni.value);
       if (!isNaN(v) && v >= cfg.min && v <= cfg.max) set(v);
