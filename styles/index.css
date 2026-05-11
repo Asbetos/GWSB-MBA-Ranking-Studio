@@ -302,22 +302,40 @@
   }
 
   /* ============== Range slider — refined, single-colour thumb ============== */
+  /* The input is the click-target / focus host. Track + thumb are styled
+   * via the runnable-track / slider-thumb pseudo-elements so the thumb
+   * can be vertically centred on the track regardless of element height.
+   * Centring math (WebKit): margin-top = (track-height - thumb-height) / 2. */
   input[type="range"] {
-    @apply w-full appearance-none cursor-pointer;
+    @apply w-full cursor-pointer;
+    -webkit-appearance: none;
+       -moz-appearance: none;
+            appearance: none;
+    background: transparent;
+    height: 18px;          /* matches thumb height — guarantees vertical room */
+    padding: 0;
+    margin: 0;
+    outline: none;
+  }
+  /* WebKit / Chromium / Edge */
+  input[type="range"]::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 4px;
     background: linear-gradient(90deg, rgba(236,72,153,0.35) 0%, rgba(168,85,247,0.35) 50%, rgba(6,182,212,0.35) 100%);
-    outline: none;
+    border: 0;
   }
   input[type="range"]::-webkit-slider-thumb {
-    @apply appearance-none cursor-pointer;
-    width: 16px;
-    height: 16px;
+    -webkit-appearance: none;
+            appearance: none;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--c-magenta);
     border: 2px solid var(--ink-900);
     box-shadow: 0 0 0 1px var(--c-magenta), 0 2px 8px rgba(236,72,153,0.45);
-    margin-top: -6px;
+    margin-top: -7px;     /* (4 - 18) / 2 = -7 — perfectly centres on the 4px track */
+    cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
   input[type="range"]::-webkit-slider-thumb:hover {
@@ -327,11 +345,27 @@
   input[type="range"]:focus-visible::-webkit-slider-thumb {
     box-shadow: 0 0 0 1px var(--c-magenta), 0 0 0 5px rgba(236,72,153,0.32), 0 4px 12px rgba(236,72,153,0.5);
   }
+  /* Firefox auto-centres the thumb against the track. */
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(236,72,153,0.35) 0%, rgba(168,85,247,0.35) 50%, rgba(6,182,212,0.35) 100%);
+    border: 0;
+  }
   input[type="range"]::-moz-range-thumb {
-    width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
     background: var(--c-magenta);
     border: 2px solid var(--ink-900);
     box-shadow: 0 0 0 1px var(--c-magenta), 0 2px 8px rgba(236,72,153,0.45);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 1px var(--c-magenta), 0 0 0 6px rgba(236,72,153,0.18), 0 4px 12px rgba(236,72,153,0.5);
   }
 
   /* ============== Stat card ============== */
