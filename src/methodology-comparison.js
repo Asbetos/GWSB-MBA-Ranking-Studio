@@ -1,13 +1,16 @@
 /**
  * Tab — Methodology Comparison.
  * Per-school: Published rank/score vs. all 5 models' predicted rank/score.
- * Sortable by absolute disagreement, searchable, with summary correlations.
+ * Every column header is click-sortable (asc/desc) with arrow indicators;
+ * delta columns default to |Δ| descending. The quick-sort button row above
+ * the table is a shortcut for the most-common sort selections.
  */
 
 import { getMethodologyComparison, MODEL_KEYS, MODEL_META } from './model.js';
 
 let cmpData = null;
 let sortKey = 'published_rank';
+let sortDir = 'asc';                // 'asc' | 'desc' | 'absdesc' (delta cols)
 let searchTerm = '';
 let inited = false;
 
@@ -66,6 +69,64 @@ function deltaCell(value, pp = 0) {
   return `<span class="${cls} font-mono text-xs">${sign}${abs(value).toFixed(pp)}</span>`;
 }
 
+// ----- Sorting -----
+
+// Default direction when a column is first activated. Delta columns default
+// to |Δ| descending (analyst typically wants the biggest disagreements first).
+const COLUMN_DEFAULTS = {
+  school:           'asc',
+  published_rank:   'asc',
+  published_score:  'desc',
+};
+for (const k of MODEL_KEYS) {
+  COLUMN_DEFAULTS[`${k}_rank`] = 'asc';
+  COLUMN_DEFAULTS[`${k}_rank_delta`] = 'absdesc';
+}
+
+function setSort(key) {
+  if (sortKey === key) {
+    // Toggle within the column's natural directions.
+    if (sortDir === 'asc') sortDir = 'desc';
+    else if (sortDir === 'desc') sortDir = 'asc';
+    else if (sortDir === 'absdesc') sortDir = 'absasc';
+    else if (sortDir === 'absasc') sortDir = 'absdesc';
+  } else {
+    sortKey = key;
+    sortDir = COLUMN_DEFAULTS[key] || 'asc';
+  }
+  renderTable();
+}
+
+function cmpRows(a, b) {
+  const av = a[sortKey], bv = b[sortKey];
+  if (sortKey === 'school') {
+    const ax = (av || '').toString().toLowerCase();
+    const bx = (bv || '').toString().toLowerCase();
+    if (ax < bx) return sortDir === 'asc' ? -1 : 1;
+    if (ax > bx) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  }
+  const an = Number(av), bn = Number(bv);
+  if (sortDir === 'asc')      return an - bn;
+  if (sortDir === 'desc')     return bn - an;
+  if (sortDir === 'absasc')   return Math.abs(an) - Math.abs(bn);
+  if (sortDir === 'absdesc')  return Math.abs(bn) - Math.abs(an);
+  return 0;
+}
+
+function sortArrow(key) {
+  if (sortKey !== key) return '<span class="cmp-sort-arrow" aria-hidden="true">&#9662;</span>';   // dim placeholder
+  // Active arrow: full triangle that points up or down.
+  const isAsc = sortDir === 'asc' || sortDir === 'absasc';
+  return `<span class="cmp-sort-arrow active" aria-hidden="true">${isAsc ? '&#9650;' : '&#9660;'}</span>`;
+}
+
+function sortAria(key) {
+  if (sortKey !== key) return 'none';
+  if (sortDir === 'asc' || sortDir === 'absasc') return 'ascending';
+  return 'descending';
+}
+
 function renderTable() {
   const wrap = document.getElementById('cmp-table-wrap');
   if (!wrap) return;
@@ -74,18 +135,20 @@ function renderTable() {
     const t = searchTerm.toLowerCase();
     rows = rows.filter(r => r.school.toLowerCase().includes(t));
   }
-  rows = rows.slice().sort((a, b) => {
-    if (sortKey === 'published_rank') return a.published_rank - b.published_rank;
-    return abs(b[sortKey]) - abs(a[sortKey]);
-  });
+  rows = rows.slice().sort(cmpRows);
 
   const headerCells = MODEL_KEYS.map(k => {
     const meta = MODEL_META[k];
-    return `
-      <th class="text-right py-2 px-2 font-medium whitespace-nowrap" style="color:${meta.color}" colspan="2">${meta.short}</th>
-    `;
+    return `<th class="text-right py-2 px-2 font-medium whitespace-nowrap" style="color:${meta.color}" colspan="2">${meta.short}</th>`;
   }).join('');
-  const subHeaderCells = MODEL_KEYS.map(() => `<th class="text-right py-1 px-2 text-micro font-medium text-gray-500">Rank</th><th class="text-right py-1 px-2 text-micro font-medium text-gray-500">&Delta;</th>`).join('');
+  const subHeaderCells = MODEL_KEYS.map(k => `
+    <th class="text-right py-1 px-2 text-micro font-medium text-gray-500 cmp-sortable"
+        data-sort="${k}_rank" aria-sort="${sortAria(`${k}_rank`)}"
+        title="Click to sort by ${MODEL_META[k].short} rank">Rank ${sortArrow(`${k}_rank`)}</th>
+    <th class="text-right py-1 px-2 text-micro font-medium text-gray-500 cmp-sortable"
+        data-sort="${k}_rank_delta" aria-sort="${sortAria(`${k}_rank_delta`)}"
+        title="Click to sort by |&Delta;| (${MODEL_META[k].short} vs published)">&Delta; ${sortArrow(`${k}_rank_delta`)}</th>
+  `).join('');
 
   const body = rows.map(r => {
     const cells = MODEL_KEYS.map(k => `
@@ -106,9 +169,15 @@ function renderTable() {
     <table class="cmp-table text-sm">
       <thead>
         <tr class="text-gray-500 text-micro uppercase tracking-widest border-b border-white/10">
-          <th class="text-left py-2 px-2 font-medium" rowspan="2">School</th>
-          <th class="text-right py-2 px-2 font-medium whitespace-nowrap" rowspan="2" title="Published rank (US News)">Pub Rk</th>
-          <th class="text-right py-2 px-2 font-medium whitespace-nowrap" rowspan="2" title="Published score (US News)">Pub Sc</th>
+          <th class="text-left py-2 px-2 font-medium cmp-sortable"
+              data-sort="school" aria-sort="${sortAria('school')}"
+              rowspan="2" title="Click to sort alphabetically">School ${sortArrow('school')}</th>
+          <th class="text-right py-2 px-2 font-medium whitespace-nowrap cmp-sortable"
+              data-sort="published_rank" aria-sort="${sortAria('published_rank')}"
+              rowspan="2" title="Click to sort by published rank">Pub Rk ${sortArrow('published_rank')}</th>
+          <th class="text-right py-2 px-2 font-medium whitespace-nowrap cmp-sortable"
+              data-sort="published_score" aria-sort="${sortAria('published_score')}"
+              rowspan="2" title="Click to sort by published score">Pub Sc ${sortArrow('published_score')}</th>
           ${headerCells}
         </tr>
         <tr class="border-b border-white/10">${subHeaderCells}</tr>
@@ -116,6 +185,22 @@ function renderTable() {
       <tbody>${body}</tbody>
     </table>
   `;
+
+  // Delegate header clicks
+  wrap.querySelectorAll('.cmp-sortable').forEach(th => {
+    th.addEventListener('click', () => setSort(th.dataset.sort));
+    th.setAttribute('role', 'button');
+    th.setAttribute('tabindex', '0');
+    th.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSort(th.dataset.sort); }
+    });
+  });
+
+  // Keep the quick-sort button row in sync with whichever column is active.
+  const sortWrap = document.getElementById('cmp-sort-buttons');
+  if (sortWrap) {
+    sortWrap.querySelectorAll('.cmp-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sortKey));
+  }
 }
 
 function attachHandlers() {
@@ -126,14 +211,10 @@ function attachHandlers() {
   if (sortWrap) {
     sortWrap.innerHTML = `
       <button data-sort="published_rank" class="cmp-sort-btn active">Published rank</button>
-      ${MODEL_KEYS.map(k => `<button data-sort="${k}_rank_delta" class="cmp-sort-btn">|Δ ${MODEL_META[k].short}|</button>`).join('')}
+      ${MODEL_KEYS.map(k => `<button data-sort="${k}_rank_delta" class="cmp-sort-btn">|&Delta; ${MODEL_META[k].short}|</button>`).join('')}
     `;
     sortWrap.querySelectorAll('.cmp-sort-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        sortKey = btn.dataset.sort;
-        sortWrap.querySelectorAll('.cmp-sort-btn').forEach(b => b.classList.toggle('active', b === btn));
-        renderTable();
-      });
+      btn.addEventListener('click', () => setSort(btn.dataset.sort));
     });
   }
 }

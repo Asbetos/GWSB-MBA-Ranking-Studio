@@ -11,7 +11,7 @@
   <meta property="og:description"
     content="Five-engine sensitivity and rank-interval workbench for the GWSB Ranking Predictor." />
   <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ec4899'/><stop offset='1' stop-color='%2306b6d4'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='%230a0716'/><circle cx='50' cy='50' r='18' fill='url(%23g)'/></svg>" />
   <link rel="stylesheet" href="/styles/index.css" />
 </head>
 
@@ -25,11 +25,11 @@
   </div>
 
   <!-- Header -->
-  <header class="pt-5 pb-3 px-4 sm:px-6">
+  <header class="pt-8 pb-5 px-4 sm:px-6">
     <div class="max-w-7xl mx-auto text-center">
-      <h1 class="text-2xl sm:text-3xl font-black tracking-tight m-0"
-          style="background: linear-gradient(135deg, #ec4899, #a855f7 50%, #06b6d4); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 200%; animation: gradient-shift 8s ease infinite;">
-        GWSB Ranking Analytics Studio
+      <h1 class="studio-wordmark">
+        <span class="studio-wm-mark" aria-hidden="true"></span>
+        <span>GWSB <span class="studio-wm-em">Ranking</span> Analytics <span class="studio-wm-trail">Studio</span></span>
       </h1>
     </div>
 
@@ -160,13 +160,13 @@
           </button>
         </div>
 
-        <div class="glass-panel p-3 sm:p-4 border-amber-500/30 mt-1">
-          <p class="text-mini" style="color:#fcd34d">
-            <strong>How the workspace composes:</strong>
-            In <strong>Direct</strong> mode the simulation reads the nine methodology indicators straight from the sliders. In <strong>Indirect</strong> mode the operational levers feed the eight Core Feature Models (RidgeCV/ElasticNetCV pipelines fitted per indicator), whose predictions populate the direct sliders read-only and then feed the same simulation. Only one set is interactive at a time — switch modes to compare lever pathways without their values colliding.
-            The active scoring engine then runs a residual-anchored Monte Carlo (10,000 draws · rank-tier-calibrated Gaussian noise on competitor scores), so the rank median and 90% interval above always correspond to the engine selected at top.
+        <aside class="editorial-note mt-1" aria-label="How the workspace composes">
+          <p class="kicker mb-1.5">How the workspace composes</p>
+          <p class="text-mini" style="color: var(--text-2); line-height: 1.55;">
+            In <strong>Direct</strong> mode the simulation reads the nine methodology indicators straight from the sliders. In <strong>Indirect</strong> mode the operational levers feed the eight Core Feature Models (RidgeCV / ElasticNetCV pipelines fitted per indicator), whose predictions populate the direct sliders read-only and then feed the same simulation. Only one set is interactive at a time &mdash; switch modes to compare lever pathways without their values colliding.
+            The active scoring engine then runs a residual-anchored Monte Carlo (10,000 draws &middot; rank-tier-calibrated Gaussian noise on competitor scores), so the rank median and 90% interval above always correspond to the engine selected at top.
           </p>
-        </div>
+        </aside>
       </div>
     </section>
 
@@ -176,8 +176,9 @@
     <section class="tab-pane hidden" id="tab-insights" role="tabpanel" aria-labelledby="tab-btn-insights" tabindex="0">
       <div class="flex flex-col gap-5">
         <div class="glass-panel p-4 sm:p-5">
-          <h2 class="text-lg sm:text-xl font-bold text-white mb-1">Engine diagnostics &amp; feature signals</h2>
-          <p class="text-mini" style="color:#c4b5fd">
+          <p class="eyebrow mb-1.5"><span class="eyebrow-num">02</span> Model Insights</p>
+          <h2 class="panel-h1 mb-2">Engine diagnostics &amp; feature signals</h2>
+          <p class="text-mini" style="color: var(--text-2)">
             Side-by-side fit statistics for the five scoring engines, all trained on the stacked 2024 + 2025 panel (n &asymp; 243 school-years &times; 9 indicators) and evaluated via 5-fold cross-validation against the published US News Overall Score.
             The ElasticNet engine here is the same Direct Score Model that powers the GWSB Ranking Predictor (v2) — use this tab to read v2's coefficients in context, and to triangulate whether the v2 linear fit holds up against the four non-linear alternatives before committing to a recommendation.
           </p>
@@ -220,8 +221,9 @@
     <section class="tab-pane hidden" id="tab-comparison" role="tabpanel" aria-labelledby="tab-btn-comparison" tabindex="0">
       <div class="flex flex-col gap-5">
         <div class="glass-panel p-4 sm:p-5">
-          <h2 class="text-lg sm:text-xl font-bold text-white mb-1">Cohort disagreement · published vs. five engines</h2>
-          <p class="text-mini" style="color:#c4b5fd">
+          <p class="eyebrow mb-1.5"><span class="eyebrow-num">03</span> Per-School Comparison</p>
+          <h2 class="panel-h1 mb-2">Cohort disagreement &middot; published vs. five engines</h2>
+          <p class="text-mini" style="color: var(--text-2)">
             Engine-by-engine rank reconciliation against the published US News ranking for the
             <span id="cmp-snapshot-year">2025</span> cohort.
             &Delta;rank = (model rank &minus; published rank); positive values mean the engine placed the school <em>worse</em> than US News did.
@@ -251,11 +253,15 @@
 
   </main>
 
-  <footer class="max-w-7xl mx-auto px-4 sm:px-6 py-3 mt-3 border-t border-white/5">
-    <p class="text-center text-gray-500 text-xs">
-      Built for GWSB Operations &amp; Strategic Initiatives, by
-      <a href="https://www.linkedin.com/in/venkateshbn/" target="_blank" rel="noopener noreferrer" class="text-magenta-300 hover:text-magenta-200 underline-offset-2 hover:underline">asbetos</a>
-    </p>
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 mt-6 mb-2">
+    <hr class="rule" />
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3">
+      <p class="kicker">GWSB Operations &middot; Strategic Initiatives</p>
+      <p class="text-mini" style="color: var(--text-4)">
+        Companion to the GWSB Ranking Predictor &middot; built by
+        <a href="https://www.linkedin.com/in/venkateshbn/" target="_blank" rel="noopener noreferrer" class="footer-link">asbetos</a>
+      </p>
+    </div>
   </footer>
 
   <script type="module" src="/src/main.js"></script>
