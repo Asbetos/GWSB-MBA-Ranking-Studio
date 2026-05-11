@@ -1,6 +1,12 @@
 /**
- * Direct sliders: 9 indicator sliders + composite GMAT/GRE control.
- * Compact card layout (smaller padding, designed for the dual-panel studio).
+ * Direct sliders: 9 indicator sliders + composite GMAT/GRE control + composite
+ * Salary-by-Profession control. Input format mirrors v2 exactly:
+ *   - GMAT composite has Include-GMAT and Include-GRE toggle switches, full
+ *     scale labels (200–800 / 205–805), the cohort-floor fallback note, and the
+ *     "Blended percentile (vs. cohort)" subtitle.
+ *   - SBP composite uses the three-input row: salary number input + slider + n input.
+ *   - Direct sliders show a red-border error message when the typed number is
+ *     outside the indicator's valid range.
  */
 
 import { getFeatureRanges, getGWUValues, getGmatInputConfig, computeBlendedGMAT, getSbpConfig, computeSBPRatio } from './model.js';
@@ -12,7 +18,7 @@ const FEATURE_ORDER = [
 ];
 
 let currentValues = {};
-let gmatState = { scale: 'old', gmat_score: null, gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false };
+let gmatState = { scale: 'old', gmat_score: null, gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false, gmat_enabled: true };
 let sbpState = {};
 let onChangeCallback = null;
 let debounceTimer = null;
@@ -34,9 +40,12 @@ function buildSlider(featureKey, config, initialValue) {
   c.innerHTML = `
     <div class="flex items-center justify-between gap-2 mb-1.5">
       <label class="text-xs font-semibold text-gray-300 truncate" for="range-${featureKey}" title="${label}">${label}</label>
-      <span role="button" tabindex="0" class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md cursor-pointer hover:bg-magenta-500/20 transition whitespace-nowrap" id="value-${featureKey}" title="Click to edit numerically">${fmt(initialValue, format)}</span>
-      <input type="number" id="input-${featureKey}" class="hidden w-24 bg-ink-800 border border-magenta-500/40 text-magenta-300 rounded px-1.5 py-0.5 text-xs font-mono text-right focus:outline-none focus:border-magenta-500" min="${min}" max="${max}" step="${step}" value="${initialValue}" />
+      <div class="flex flex-col items-end">
+        <span role="button" tabindex="0" class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md cursor-pointer hover:bg-magenta-500/20 transition whitespace-nowrap" id="value-${featureKey}" title="Click to edit numerically">${fmt(initialValue, format)}</span>
+        <input type="number" id="input-${featureKey}" class="hidden w-24 bg-ink-800 border border-magenta-500/40 text-magenta-300 rounded px-1.5 py-0.5 text-xs font-mono text-right focus:outline-none focus:border-magenta-500" min="${min}" max="${max}" step="${step}" value="${initialValue}" aria-label="${label} numeric input" />
+      </div>
     </div>
+    <div id="error-${featureKey}" class="hidden text-rose-400 text-micro text-right mb-1 -mt-1">Invalid range (${fmt(min, format)}&ndash;${fmt(max, format)})</div>
     <input type="range" id="range-${featureKey}" min="${min}" max="${max}" step="${step}" value="${initialValue}" aria-label="${label}" />
     <div class="flex justify-between mt-1">
       <span class="text-micro text-gray-600">${fmt(min, format)}</span>
@@ -51,61 +60,82 @@ function buildGmatComposite(gmatCfg, gwuValues) {
   wrap.className = 'slider-container md:col-span-2';
   wrap.id = 'slider-GMAT_Combined';
   const sd = gmatCfg.gmat_scale_default || 'old';
-  const oldR = gmatCfg.gmat_old_range, newR = gmatCfg.gmat_new_range;
+  const oldR = gmatCfg.gmat_old_range || { min: 200, max: 800, step: 5 };
+  const newR = gmatCfg.gmat_new_range || { min: 205, max: 805, step: 5 };
   const qR = gmatCfg.gre_q_range, vR = gmatCfg.gre_v_range, awR = gmatCfg.gre_aw_range;
   const initG = sd === 'old' ? (gwuValues.gmat_old ?? Math.round((oldR.min + oldR.max) / 2)) : (gwuValues.gmat_new ?? Math.round((newR.min + newR.max) / 2));
   const initQ = gwuValues.gre_q ?? Math.round((qR.min + qR.max) / 2);
   const initV = gwuValues.gre_v ?? Math.round((vR.min + vR.max) / 2);
   const initAW = gwuValues.gre_aw ?? ((awR.min + awR.max) / 2);
   const greOn = !!gmatCfg.gre_default_enabled;
-  gmatState = { scale: sd, gmat_score: initG, gre_q: initQ, gre_v: initV, gre_aw: initAW, gre_enabled: greOn };
+  const gmatOn = true;
+  gmatState = { scale: sd, gmat_score: initG, gre_q: initQ, gre_v: initV, gre_aw: initAW, gre_enabled: greOn, gmat_enabled: gmatOn };
 
   wrap.innerHTML = `
     <div class="flex items-center justify-between gap-2 mb-1.5">
       <label class="text-xs font-semibold text-gray-300">GMAT / GRE Score</label>
-      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-GMAT_Combined">—</span>
+      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-GMAT_Combined">&mdash;</span>
     </div>
-    <div class="flex gap-1 mb-2" role="group" aria-label="GMAT scale">
-      <button type="button" data-gmat-scale="old" class="gmat-scale-btn ${sd === 'old' ? 'active' : ''}">Old GMAT</button>
-      <button type="button" data-gmat-scale="new" class="gmat-scale-btn ${sd === 'new' ? 'active' : ''}">New GMAT</button>
-    </div>
-    <input type="range" id="range-GMAT_Score" min="${sd === 'old' ? oldR.min : newR.min}" max="${sd === 'old' ? oldR.max : newR.max}" step="${sd === 'old' ? oldR.step : newR.step}" value="${initG}" aria-label="GMAT score" />
-    <div class="flex justify-between mt-1 text-micro text-gray-600">
-      <span id="gmat-min-label">${sd === 'old' ? oldR.min : newR.min}</span>
-      <span class="text-magenta-300 font-mono" id="gmat-score-display">${Math.round(initG)}</span>
-      <span id="gmat-max-label">${sd === 'old' ? oldR.max : newR.max}</span>
-    </div>
-    <div class="mt-3 pt-2 border-t border-white/5">
-      <label class="flex items-center gap-1.5 text-micro text-gray-400 cursor-pointer">
-        <input type="checkbox" id="gre-toggle" ${greOn ? 'checked' : ''} class="accent-magenta-500" />
-        GRE (40Q + 40V + 20AW)
+
+    <div class="pb-2 border-b border-white/5">
+      <label class="toggle-switch text-mini mb-2">
+        <input type="checkbox" id="gmat-toggle" ${gmatOn ? 'checked' : ''} />
+        <span class="toggle-switch-track" aria-hidden="true"><span class="toggle-switch-knob"></span></span>
+        <span class="text-gray-300 font-semibold">Include GMAT input</span>
       </label>
-      <div id="gre-controls" class="mt-1.5 ${greOn ? '' : 'hidden'} space-y-1.5">
+      <div id="gmat-controls" class="${gmatOn ? '' : 'hidden'}">
+        <div class="flex gap-1 mb-2" role="group" aria-label="GMAT scale">
+          <button type="button" data-gmat-scale="old" class="gmat-scale-btn px-2 py-0.5 rounded ${sd === 'old' ? 'active' : ''}">Old GMAT (200&ndash;800)</button>
+          <button type="button" data-gmat-scale="new" class="gmat-scale-btn px-2 py-0.5 rounded ${sd === 'new' ? 'active' : ''}">New GMAT (205&ndash;805)</button>
+        </div>
+        <input type="range" id="range-GMAT_Score" min="${sd === 'old' ? oldR.min : newR.min}" max="${sd === 'old' ? oldR.max : newR.max}" step="${sd === 'old' ? oldR.step : newR.step}" value="${initG}" aria-label="GMAT score" />
+        <div class="flex justify-between mt-1 text-micro text-gray-600">
+          <span id="gmat-min-label">${sd === 'old' ? oldR.min : newR.min}</span>
+          <span class="text-magenta-300 font-mono" id="gmat-score-display">${Math.round(initG)}</span>
+          <span id="gmat-max-label">${sd === 'old' ? oldR.max : newR.max}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 pt-2 border-t border-white/5">
+      <label class="toggle-switch text-mini">
+        <input type="checkbox" id="gre-toggle" ${greOn ? 'checked' : ''} />
+        <span class="toggle-switch-track" aria-hidden="true"><span class="toggle-switch-knob"></span></span>
+        <span class="text-gray-300 font-semibold">Include GRE input</span>
+        <span class="text-micro text-gray-500">(40% Q + 40% V + 20% AW)</span>
+      </label>
+      <p class="text-micro text-gray-500 mt-1 leading-snug">If both GMAT and GRE are off, the cohort floor is used (matches US News missing-data rule).</p>
+      <div id="gre-controls" class="mt-2 ${greOn ? '' : 'hidden'} space-y-1.5">
         <div>
-          <div class="flex justify-between text-micro text-gray-500"><span>GRE Q</span><span class="text-cyan-300 font-mono" id="gre-q-display">${initQ}</span></div>
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE Quantitative</span><span class="text-cyan-300 font-mono" id="gre-q-display">${initQ}</span></div>
           <input type="range" id="range-GRE_Q" min="${qR.min}" max="${qR.max}" step="${qR.step}" value="${initQ}" aria-label="GRE quantitative" />
         </div>
         <div>
-          <div class="flex justify-between text-micro text-gray-500"><span>GRE V</span><span class="text-cyan-300 font-mono" id="gre-v-display">${initV}</span></div>
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE Verbal</span><span class="text-cyan-300 font-mono" id="gre-v-display">${initV}</span></div>
           <input type="range" id="range-GRE_V" min="${vR.min}" max="${vR.max}" step="${vR.step}" value="${initV}" aria-label="GRE verbal" />
         </div>
         <div>
-          <div class="flex justify-between text-micro text-gray-500"><span>GRE AW</span><span class="text-cyan-300 font-mono" id="gre-aw-display">${initAW.toFixed(1)}</span></div>
+          <div class="flex justify-between text-micro text-gray-500"><span>GRE Analytical Writing</span><span class="text-cyan-300 font-mono" id="gre-aw-display">${initAW.toFixed(1)}</span></div>
           <input type="range" id="range-GRE_AW" min="${awR.min}" max="${awR.max}" step="${awR.step}" value="${initAW}" aria-label="GRE analytical writing" />
         </div>
       </div>
     </div>
+
+    <p class="text-micro text-gray-500 mt-2 leading-snug">Blended percentile (vs. cohort) &mdash; fed to the scoring engine.</p>
   `;
   return wrap;
 }
 
 function attachGmatHandlers(wrap, gmatCfg, fireChange) {
-  const oldR = gmatCfg.gmat_old_range, newR = gmatCfg.gmat_new_range;
+  const oldR = gmatCfg.gmat_old_range || { min: 200, max: 800, step: 5 };
+  const newR = gmatCfg.gmat_new_range || { min: 205, max: 805, step: 5 };
   const r = wrap.querySelector('#range-GMAT_Score');
   const disp = wrap.querySelector('#gmat-score-display');
   const minL = wrap.querySelector('#gmat-min-label');
   const maxL = wrap.querySelector('#gmat-max-label');
   const btns = wrap.querySelectorAll('.gmat-scale-btn');
+  const gmatToggle = wrap.querySelector('#gmat-toggle');
+  const gmatCtrls = wrap.querySelector('#gmat-controls');
   const greToggle = wrap.querySelector('#gre-toggle');
   const greCtrls = wrap.querySelector('#gre-controls');
   const chip = wrap.querySelector('#value-GMAT_Combined');
@@ -113,25 +143,22 @@ function attachGmatHandlers(wrap, gmatCfg, fireChange) {
   const qD = wrap.querySelector('#gre-q-display'), vD = wrap.querySelector('#gre-v-display'), awD = wrap.querySelector('#gre-aw-display');
 
   const update = () => {
-    const blended = computeBlendedGMAT({
-      scale: gmatState.scale, gmat_score: gmatState.gmat_score,
+    const payload = {
+      scale: gmatState.scale,
+      gmat_score: gmatState.gmat_enabled ? gmatState.gmat_score : null,
       gre_q: gmatState.gre_enabled ? gmatState.gre_q : null,
       gre_v: gmatState.gre_enabled ? gmatState.gre_v : null,
       gre_aw: gmatState.gre_enabled ? gmatState.gre_aw : null,
       gre_enabled: gmatState.gre_enabled,
-    });
-    chip.textContent = blended.toFixed(1);
-    currentValues.GMAT_Combined = {
-      scale: gmatState.scale, gmat_score: gmatState.gmat_score,
-      gre_q: gmatState.gre_enabled ? gmatState.gre_q : null,
-      gre_v: gmatState.gre_enabled ? gmatState.gre_v : null,
-      gre_aw: gmatState.gre_enabled ? gmatState.gre_aw : null,
-      gre_enabled: gmatState.gre_enabled,
+      gmat_enabled: gmatState.gmat_enabled,
     };
+    const blended = computeBlendedGMAT(payload);
+    chip.textContent = blended.toFixed(1);
+    currentValues.GMAT_Combined = payload;
     fireChange();
   };
 
-  r.addEventListener('input', e => { gmatState.gmat_score = parseFloat(e.target.value); disp.textContent = Math.round(gmatState.gmat_score); update(); });
+  r.addEventListener('input', e => { gmatState.gmat_score = parseFloat(e.target.value); disp.textContent = Math.round(gmatState.gmat_score); if (gmatState.gmat_enabled) update(); });
   for (const b of btns) {
     b.addEventListener('click', () => {
       const s = b.dataset.gmatScale;
@@ -147,6 +174,7 @@ function attachGmatHandlers(wrap, gmatCfg, fireChange) {
       update();
     });
   }
+  gmatToggle.addEventListener('change', e => { gmatState.gmat_enabled = e.target.checked; gmatCtrls.classList.toggle('hidden', !gmatState.gmat_enabled); update(); });
   greToggle.addEventListener('change', e => { gmatState.gre_enabled = e.target.checked; greCtrls.classList.toggle('hidden', !gmatState.gre_enabled); update(); });
   qR.addEventListener('input', e => { gmatState.gre_q = parseFloat(e.target.value); qD.textContent = Math.round(gmatState.gre_q); if (gmatState.gre_enabled) update(); });
   vR.addEventListener('input', e => { gmatState.gre_v = parseFloat(e.target.value); vD.textContent = Math.round(gmatState.gre_v); if (gmatState.gre_enabled) update(); });
@@ -156,6 +184,7 @@ function attachGmatHandlers(wrap, gmatCfg, fireChange) {
 
 // ============================================================
 // Composite SBP control: 7 industries × {salary, n_reporting}
+// 3-input row layout matches v2 exactly: salary number input + salary slider + n input
 // ============================================================
 
 function buildSBPComposite(sbpCfg, gwuSBP) {
@@ -183,22 +212,26 @@ function buildSBPComposite(sbpCfg, gwuSBP) {
     const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
     return `
       <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
-        <div class="flex items-center justify-between gap-2 mb-0.5">
+        <div class="flex items-center justify-between gap-2 mb-1">
           <p class="text-mini font-semibold text-white truncate" title="${occ}">${occ}</p>
           <span class="text-micro text-gray-500 whitespace-nowrap">${cmStr}</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="sbp-row">
+          <input type="number" id="sbp-sal-input-${safeKey}" data-occ="${occ}" data-role="salary-input"
+                 class="sbp-salary-input"
+                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${Math.round(init.salary)}"
+                 aria-label="${occ} median salary (number)" />
           <input type="range" id="sbp-sal-${safeKey}" data-occ="${occ}" data-role="salary"
-                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${init.salary}" class="flex-1"
+                 min="${sld.min}" max="${sld.max}" step="${sld.step}" value="${init.salary}"
                  aria-label="${occ} median salary" />
           <input type="number" id="sbp-n-${safeKey}" data-occ="${occ}" data-role="n"
                  min="0" max="200" step="1" value="${init.n}"
-                 class="w-11 bg-ink-800 border border-white/10 text-emerald-300 rounded px-1 py-0.5 text-micro font-mono text-right focus:outline-none focus:border-emerald-500"
-                 title="number of reporting graduates" aria-label="${occ} reporting count" />
+                 class="bg-ink-800 border border-emerald-500/30 text-emerald-300 rounded px-1 py-0.5 text-micro font-mono text-right focus:outline-none focus:border-emerald-500"
+                 style="width: 100%;" title="number of reporting graduates" aria-label="${occ} reporting count" />
         </div>
         <div class="flex justify-between mt-0.5">
-          <span class="text-micro text-magenta-300 font-mono" id="sbp-sal-disp-${safeKey}">$${Math.round(init.salary).toLocaleString()}</span>
-          <span class="text-micro text-gray-500">n &ge; 3 required</span>
+          <span class="text-micro text-gray-500">salary $</span>
+          <span class="text-micro text-gray-500">n reporting (&ge;3 to count)</span>
         </div>
       </div>
     `;
@@ -208,9 +241,9 @@ function buildSBPComposite(sbpCfg, gwuSBP) {
     <div class="flex items-start justify-between gap-2 mb-1.5">
       <div class="min-w-0">
         <label class="text-xs font-semibold text-gray-300">Salary by Profession (cohort-relative)</label>
-        <p class="text-micro text-gray-500 mt-0.5">n-weighted mean of (industry salary &divide; cohort mean). Industries with &lt;3 reporters excluded, mirroring US News.</p>
+        <p class="text-micro text-gray-500 mt-0.5 leading-snug">n-weighted mean of (industry salary &divide; cohort mean). Industries with &lt;3 reporters excluded, mirroring US News.</p>
       </div>
-      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-SalaryByProfession">—</span>
+      <span class="text-xs font-mono font-bold text-magenta-300 bg-magenta-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" id="value-SalaryByProfession">&mdash;</span>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">${rows}</div>
   `;
@@ -225,15 +258,36 @@ function attachSBPHandlers(wrap, fireChange) {
     currentValues.SalaryByProfession = { ...sbpState };
     fireChange();
   };
+  // Slider drives both: state + paired number input
   wrap.querySelectorAll('input[data-role="salary"]').forEach(el => {
     el.addEventListener('input', e => {
       const occ = e.target.dataset.occ;
-      sbpState[occ].salary = parseFloat(e.target.value);
+      const v = parseFloat(e.target.value);
+      sbpState[occ].salary = v;
       const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
-      const disp = wrap.querySelector(`#sbp-sal-disp-${safeKey}`);
-      if (disp) disp.textContent = '$' + Math.round(sbpState[occ].salary).toLocaleString();
+      const numInput = wrap.querySelector(`#sbp-sal-input-${safeKey}`);
+      if (numInput) numInput.value = Math.round(v);
       update();
     });
+  });
+  // Number input drives both: state + paired slider
+  wrap.querySelectorAll('input[data-role="salary-input"]').forEach(el => {
+    const commit = (clamp = false) => {
+      const occ = el.dataset.occ;
+      const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
+      const slider = wrap.querySelector(`#sbp-sal-${safeKey}`);
+      let v = parseFloat(el.value);
+      if (isNaN(v)) return;
+      const min = parseFloat(slider.min);
+      const max = parseFloat(slider.max);
+      if (clamp) v = Math.max(min, Math.min(max, v));
+      sbpState[occ].salary = v;
+      slider.value = Math.max(min, Math.min(max, v));
+      update();
+    };
+    el.addEventListener('input', () => commit(false));
+    el.addEventListener('blur', () => commit(true));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
   });
   wrap.querySelectorAll('input[data-role="n"]').forEach(el => {
     el.addEventListener('input', e => {
@@ -288,14 +342,30 @@ export function initSliders(containerId, onChange) {
     const r = slider.querySelector(`#range-${k}`);
     const ni = slider.querySelector(`#input-${k}`);
     const d = slider.querySelector(`#value-${k}`);
+    const errEl = slider.querySelector(`#error-${k}`);
+
+    const validateInput = (val) => !isNaN(val) && val >= cfg.min && val <= cfg.max;
+    const toggleError = (isInvalid) => {
+      if (isInvalid) {
+        errEl?.classList.remove('hidden');
+        ni.classList.remove('border-magenta-500/40', 'text-magenta-300', 'focus:border-magenta-500');
+        ni.classList.add('border-rose-500', 'text-rose-400', 'focus:border-rose-500');
+      } else {
+        errEl?.classList.add('hidden');
+        ni.classList.add('border-magenta-500/40', 'text-magenta-300', 'focus:border-magenta-500');
+        ni.classList.remove('border-rose-500', 'text-rose-400', 'focus:border-rose-500');
+      }
+    };
     const set = (val) => {
       val = Math.max(cfg.min, Math.min(cfg.max, val));
       currentValues[k] = val;
       r.value = val; ni.value = val;
       d.textContent = fmt(val, cfg.format);
+      toggleError(false);
       fireChange();
     };
     r.addEventListener('input', e => set(parseFloat(e.target.value)));
+    ni.addEventListener('input', e => toggleError(!validateInput(parseFloat(e.target.value))));
     const enterEditMode = () => { d.classList.add('hidden'); ni.classList.remove('hidden'); ni.focus(); ni.select(); };
     d.addEventListener('click', enterEditMode);
     d.addEventListener('keydown', e => {
@@ -303,8 +373,8 @@ export function initSliders(containerId, onChange) {
     });
     const commit = () => {
       const v = parseFloat(ni.value);
-      if (!isNaN(v) && v >= cfg.min && v <= cfg.max) set(v);
-      else ni.value = currentValues[k];
+      if (validateInput(v)) set(v);
+      else { ni.value = currentValues[k]; toggleError(false); }
       ni.classList.add('hidden'); d.classList.remove('hidden');
     };
     ni.addEventListener('blur', commit);
@@ -332,14 +402,12 @@ export function setSlidersFromCfm(predictedCore) {
   }
   if ('GMAT_Combined' in predictedCore && typeof predictedCore.GMAT_Combined === 'number') {
     // Convert raw GMAT (old-scale) prediction -> blended via percentile rank
-    const predBlended = computeBlendedGMAT({
+    const payload = {
       scale: 'old', gmat_score: predictedCore.GMAT_Combined,
-      gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false,
-    });
-    currentValues.GMAT_Combined = {
-      scale: 'old', gmat_score: predictedCore.GMAT_Combined,
-      gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false,
+      gre_q: null, gre_v: null, gre_aw: null, gre_enabled: false, gmat_enabled: true,
     };
+    const predBlended = computeBlendedGMAT(payload);
+    currentValues.GMAT_Combined = payload;
     const chip = document.getElementById('value-GMAT_Combined');
     if (chip) chip.textContent = predBlended.toFixed(1);
   }
@@ -373,46 +441,58 @@ export function resetSliders() {
       };
       const safeKey = occ.replace(/[^a-z0-9]+/gi, '_');
       const sal = sbpWrap.querySelector(`#sbp-sal-${safeKey}`);
+      const salNum = sbpWrap.querySelector(`#sbp-sal-input-${safeKey}`);
       const nIn = sbpWrap.querySelector(`#sbp-n-${safeKey}`);
-      const disp = sbpWrap.querySelector(`#sbp-sal-disp-${safeKey}`);
       if (sal) sal.value = sbpState[occ].salary;
+      if (salNum) salNum.value = Math.round(sbpState[occ].salary);
       if (nIn) nIn.value = sbpState[occ].n;
-      if (disp) disp.textContent = '$' + Math.round(sbpState[occ].salary).toLocaleString();
     }
     const ratio = computeSBPRatio(sbpState);
     sbpWrap.querySelector('#value-SalaryByProfession').textContent = ratio !== null ? ratio.toFixed(3) : '—';
     currentValues.SalaryByProfession = { ...sbpState };
   }
-  // Reset GMAT composite by re-rendering the wrap children from scratch is complex;
-  // instead we just reset the state and update the value chip.
+  // Reset GMAT composite state + UI
   const wrap = document.getElementById('slider-GMAT_Combined');
   if (wrap) {
     const sd = gmatCfg.gmat_scale_default || 'old';
-    const oldR = gmatCfg.gmat_old_range, newR = gmatCfg.gmat_new_range;
+    const oldR = gmatCfg.gmat_old_range || { min: 200, max: 800, step: 5 };
+    const newR = gmatCfg.gmat_new_range || { min: 205, max: 805, step: 5 };
+    const qR = gmatCfg.gre_q_range, vR = gmatCfg.gre_v_range, awR = gmatCfg.gre_aw_range;
     const initG = sd === 'old' ? (gwuValues.gmat_old ?? Math.round((oldR.min + oldR.max) / 2)) : (gwuValues.gmat_new ?? Math.round((newR.min + newR.max) / 2));
-    gmatState = { scale: sd, gmat_score: initG, gre_q: gwuValues.gre_q, gre_v: gwuValues.gre_v, gre_aw: gwuValues.gre_aw, gre_enabled: !!gmatCfg.gre_default_enabled };
+    const initQ = gwuValues.gre_q ?? Math.round((qR.min + qR.max) / 2);
+    const initV = gwuValues.gre_v ?? Math.round((vR.min + vR.max) / 2);
+    const initAW = gwuValues.gre_aw ?? ((awR.min + awR.max) / 2);
+    const greOn = !!gmatCfg.gre_default_enabled;
+    gmatState = { scale: sd, gmat_score: initG, gre_q: initQ, gre_v: initV, gre_aw: initAW, gre_enabled: greOn, gmat_enabled: true };
+
     const r = wrap.querySelector('#range-GMAT_Score');
     const rg = sd === 'old' ? oldR : newR;
     r.min = rg.min; r.max = rg.max; r.step = rg.step; r.value = initG;
     wrap.querySelector('#gmat-score-display').textContent = Math.round(initG);
+    wrap.querySelector('#gmat-min-label').textContent = rg.min;
+    wrap.querySelector('#gmat-max-label').textContent = rg.max;
     wrap.querySelectorAll('.gmat-scale-btn').forEach(b => b.classList.toggle('active', b.dataset.gmatScale === sd));
-    wrap.querySelector('#gre-toggle').checked = gmatState.gre_enabled;
-    wrap.querySelector('#gre-controls').classList.toggle('hidden', !gmatState.gre_enabled);
-    const blended = computeBlendedGMAT({
+    wrap.querySelector('#gmat-toggle').checked = true;
+    wrap.querySelector('#gmat-controls').classList.remove('hidden');
+    wrap.querySelector('#gre-toggle').checked = greOn;
+    wrap.querySelector('#gre-controls').classList.toggle('hidden', !greOn);
+    wrap.querySelector('#range-GRE_Q').value = initQ;
+    wrap.querySelector('#range-GRE_V').value = initV;
+    wrap.querySelector('#range-GRE_AW').value = initAW;
+    wrap.querySelector('#gre-q-display').textContent = Math.round(initQ);
+    wrap.querySelector('#gre-v-display').textContent = Math.round(initV);
+    wrap.querySelector('#gre-aw-display').textContent = initAW.toFixed(1);
+
+    const payload = {
       scale: sd, gmat_score: initG,
-      gre_q: gmatState.gre_enabled ? gmatState.gre_q : null,
-      gre_v: gmatState.gre_enabled ? gmatState.gre_v : null,
-      gre_aw: gmatState.gre_enabled ? gmatState.gre_aw : null,
-      gre_enabled: gmatState.gre_enabled,
-    });
-    wrap.querySelector('#value-GMAT_Combined').textContent = blended.toFixed(1);
-    currentValues.GMAT_Combined = {
-      scale: sd, gmat_score: initG,
-      gre_q: gmatState.gre_enabled ? gmatState.gre_q : null,
-      gre_v: gmatState.gre_enabled ? gmatState.gre_v : null,
-      gre_aw: gmatState.gre_enabled ? gmatState.gre_aw : null,
-      gre_enabled: gmatState.gre_enabled,
+      gre_q: greOn ? initQ : null,
+      gre_v: greOn ? initV : null,
+      gre_aw: greOn ? initAW : null,
+      gre_enabled: greOn, gmat_enabled: true,
     };
+    const blended = computeBlendedGMAT(payload);
+    wrap.querySelector('#value-GMAT_Combined').textContent = blended.toFixed(1);
+    currentValues.GMAT_Combined = payload;
   }
   if (onChangeCallback) onChangeCallback({ ...currentValues });
 }

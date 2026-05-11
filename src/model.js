@@ -153,17 +153,26 @@ function percentileRank(score, sortedArr) {
   return (lo + upper + 1) / 2 / sortedArr.length;
 }
 
-export function computeBlendedGMAT({ scale, gmat_score, gre_q, gre_v, gre_aw, gre_enabled }) {
+function gmatCohortFloor() {
+  if (!dataSnapshot) return 0;
+  const vals = dataSnapshot.map(s => s.GMAT_Combined).filter(v => v != null && !Number.isNaN(v));
+  if (!vals.length) return 0;
+  return Math.min(...vals);
+}
+
+export function computeBlendedGMAT({ scale, gmat_score, gre_q, gre_v, gre_aw, gre_enabled, gmat_enabled = true }) {
   if (!gmatCurves) return gmat_score ?? 0;
   let p_old = 0, p_new = 0, p_gre = 0;
   let r_old = null, r_new = null, r_gre = null;
 
-  if (scale === 'old' && gmat_score != null) {
-    r_old = percentileRank(gmat_score, gmatCurves.gmat_old);
-    if (r_old !== null) p_old = 1;
-  } else if (scale === 'new' && gmat_score != null) {
-    r_new = percentileRank(gmat_score, gmatCurves.gmat_new);
-    if (r_new !== null) p_new = 1;
+  if (gmat_enabled && gmat_score != null) {
+    if (scale === 'old') {
+      r_old = percentileRank(gmat_score, gmatCurves.gmat_old);
+      if (r_old !== null) p_old = 1;
+    } else if (scale === 'new') {
+      r_new = percentileRank(gmat_score, gmatCurves.gmat_new);
+      if (r_new !== null) p_new = 1;
+    }
   }
   if (gre_enabled) {
     const rq = gre_q != null ? percentileRank(gre_q, gmatCurves.gre_q) : null;
@@ -177,7 +186,7 @@ export function computeBlendedGMAT({ scale, gmat_score, gre_q, gre_v, gre_aw, gr
   }
 
   const total = p_old + p_new + p_gre;
-  if (total <= 0) return 0;
+  if (total <= 0) return gmatCohortFloor();   // matches v2's missing-data rule
   const blended = (p_old * (r_old || 0) + p_new * (r_new || 0) + p_gre * (r_gre || 0)) / total;
   return Math.max(0, Math.min(100, blended * 100));
 }

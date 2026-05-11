@@ -1,30 +1,18 @@
 /**
- * Indirect levers — grouped by the core feature each primarily affects, and
- * with submission-percentage levers reframed as absolute submitter counts
- * (more intuitive than fractions).
+ * Indirect levers — grouped by the core feature each primarily affects.
+ * Every lever renders in its native CFM metadata format (percent / dollar /
+ * number / binary) — same input format as the v2 Indirect Levers Predictor.
  */
 
 import {
   getLeverMetadata, getGwuPredictorValues,
   predictAllCoreFeatures, getLeverPrimaryTargets, getCoreTargetLabel,
-  getCfmTopFeatures, getCoreTargetSummaries,
+  getCfmTopFeatures, getCoreTargetSummaries, getConfidenceFor,
 } from './cfm-models.js';
-import { getGWUValues } from './model.js';
 
-let leverValues = {};       // canonical: keys are CFM feature names; submission %s stored as fractions
+let leverValues = {};       // keys = CFM feature names; values = native units (fractions for percent levers)
 let onChangeCallback = null;
 let debounceTimer = null;
-
-// Levers that we render as ABSOLUTE COUNT instead of a percentage; the JS
-// silently divides by full-time enrollment before passing to the CFM.
-const COUNT_LEVERS = new Set([
-  'gmat_data.percent_new_entrants_providing_gmat_old',
-  'gmat_data.percent_new_entrants_providing_gmat_new',
-  'gre_data.percent_new_entrants_providing_gre',
-  'gpa_data.percent_new_entrants_providing_gpa',
-  'specialty_masters_admissions.percent_providing_gpa',
-  'specialty_masters_admissions.percent_providing_gre',
-]);
 
 const CORE_LABELS_FALLBACK = {
   EmployedAtGrad: 'Employed at Graduation',
@@ -59,15 +47,10 @@ function fmt(format, value) {
   }
 }
 
-function getEnrollment() {
-  const v = getGWUValues()?.fulltime_enrollment;
-  return (v && v > 0) ? v : 73;     // GWU default fallback
-}
-
-function buildSimpleLever(meta) {
+function buildLever(meta, tone) {
   const id = `lever-${meta.key.replace(/[^a-z0-9]+/gi, '_')}`;
   const wrap = document.createElement('div');
-  wrap.className = 'slider-container';
+  wrap.className = `slider-container lever-slider tone-${tone}`;
   wrap.dataset.leverKey = meta.key;
   wrap.innerHTML = `
     <div class="flex items-center justify-between gap-2 mb-1.5">
@@ -83,48 +66,14 @@ function buildSimpleLever(meta) {
   return wrap;
 }
 
-function buildCountLever(meta, enrollment) {
-  // Reframe a fractional 0..1 lever as an absolute count 0..enrollment.
-  const id = `lever-${meta.key.replace(/[^a-z0-9]+/gi, '_')}`;
-  const initialCount = Math.round((meta.gwu_current ?? 0) * enrollment);
-  const max = Math.max(enrollment, 100);
-  const wrap = document.createElement('div');
-  wrap.className = 'slider-container';
-  wrap.dataset.leverKey = meta.key;
-  wrap.dataset.role = 'count';
-  wrap.innerHTML = `
-    <div class="flex items-center justify-between gap-2 mb-1.5">
-      <label class="text-mini font-semibold text-gray-300 truncate" for="${id}-range" title="${meta.label}">${meta.label}</label>
-      <span class="text-mini font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md whitespace-nowrap" data-role="value">${initialCount} of ${enrollment}</span>
-    </div>
-    <input type="range" id="${id}-range" min="0" max="${max}" step="1" value="${initialCount}" aria-label="${meta.label}" />
-    <div class="flex justify-between mt-0.5 text-micro text-gray-600">
-      <span>0</span>
-      <span>${max}</span>
-    </div>
-  `;
-  return wrap;
-}
-
-function attachLever(wrap, meta, enrollment) {
+function attachLever(wrap, meta) {
   const r = wrap.querySelector('input[type="range"]');
   const d = wrap.querySelector('[data-role="value"]');
-  const isCount = wrap.dataset.role === 'count';
   r.addEventListener('input', e => {
-    let displayVal;
-    let storedFraction;     // what we send to the CFM
-    if (isCount) {
-      const cnt = parseInt(e.target.value, 10);
-      displayVal = `${cnt} of ${enrollment}`;
-      storedFraction = enrollment > 0 ? cnt / enrollment : 0;
-    } else {
-      let v = parseFloat(e.target.value);
-      if (meta.format === 'binary') v = v >= 0.5 ? 1 : 0;
-      displayVal = fmt(meta.format, v);
-      storedFraction = v;
-    }
-    leverValues[meta.key] = storedFraction;
-    d.textContent = displayVal;
+    let v = parseFloat(e.target.value);
+    if (meta.format === 'binary') v = v >= 0.5 ? 1 : 0;
+    leverValues[meta.key] = v;
+    d.textContent = fmt(meta.format, v);
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       if (onChangeCallback) {
@@ -170,7 +119,7 @@ function buildCfmPopover(target, label) {
   `;
 }
 
-function buildSection(target, label, levers, enrollment) {
+function buildSection(target, label, levers, primaries) {
   const sec = document.createElement('div');
   sec.className = 'lever-group';
   sec.dataset.target = target;
@@ -187,9 +136,10 @@ function buildSection(target, label, levers, enrollment) {
   `;
   const grid = sec.querySelector(`.lever-section-${target}`);
   for (const meta of levers) {
-    const isCount = COUNT_LEVERS.has(meta.key);
-    const wrap = isCount ? buildCountLever(meta, enrollment) : buildSimpleLever(meta);
-    attachLever(wrap, meta, enrollment);
+    const primaryTarget = primaries[meta.key]?.target || 'unranked';
+    const tone = (getConfidenceFor(primaryTarget)?.tone) || 'low';
+    const wrap = buildLever(meta, tone);
+    attachLever(wrap, meta);
     grid.appendChild(wrap);
   }
   return sec;
@@ -202,7 +152,6 @@ export function initLeverSliders(containerId, onChange) {
   onChangeCallback = onChange;
   const metadata = getLeverMetadata();
   const primaries = getLeverPrimaryTargets();
-  const enrollment = getEnrollment();
 
   // Group levers by primary affected core feature
   const groups = {};
@@ -213,7 +162,6 @@ export function initLeverSliders(containerId, onChange) {
     groups[target].push(m);
   }
 
-  // Render groups in a sensible order
   const orderedTargets = [
     'AvgSalaryBonus', 'PeerScore', 'RecruiterScore', 'MedianGPA',
     'GMAT_Combined', 'AcceptanceRate', 'Employed3Mo', 'EmployedAtGrad', 'unranked',
@@ -221,7 +169,7 @@ export function initLeverSliders(containerId, onChange) {
   for (const target of orderedTargets) {
     if (!groups[target]?.length) continue;
     const label = CORE_LABELS_FALLBACK[target] || (target === 'unranked' ? 'Other' : target);
-    container.appendChild(buildSection(target, label, groups[target], enrollment));
+    container.appendChild(buildSection(target, label, groups[target], primaries));
   }
 
   if (onChangeCallback) {
@@ -232,20 +180,12 @@ export function initLeverSliders(containerId, onChange) {
 
 export function resetLeverSliders() {
   const metadata = getLeverMetadata();
-  const enrollment = getEnrollment();
   for (const m of metadata) {
     leverValues[m.key] = m.gwu_current;
     const wrap = document.querySelector(`[data-lever-key="${CSS.escape(m.key)}"]`);
     if (!wrap) continue;
-    const isCount = COUNT_LEVERS.has(m.key);
-    if (isCount) {
-      const cnt = Math.round((m.gwu_current ?? 0) * enrollment);
-      wrap.querySelector('input[type="range"]').value = cnt;
-      wrap.querySelector('[data-role="value"]').textContent = `${cnt} of ${enrollment}`;
-    } else {
-      wrap.querySelector('input[type="range"]').value = m.gwu_current;
-      wrap.querySelector('[data-role="value"]').textContent = fmt(m.format, m.gwu_current);
-    }
+    wrap.querySelector('input[type="range"]').value = m.gwu_current;
+    wrap.querySelector('[data-role="value"]').textContent = fmt(m.format, m.gwu_current);
   }
   if (onChangeCallback) {
     const row = { ...getGwuPredictorValues(), ...leverValues };
